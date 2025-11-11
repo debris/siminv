@@ -1,6 +1,4 @@
-use std::marker::PhantomData;
-
-use bevy::{color::palettes::css::WHITE, ecs::{entity, query}, pbr::UvChannel, platform::collections::{HashMap, HashSet}, prelude::*, state::commands, transform};
+use bevy::{platform::collections::HashMap, prelude::*};
 
 use crate::item::{ItemId, Items};
 
@@ -24,9 +22,6 @@ pub struct SlotColor(Color);
 #[derive(Component, Deref, DerefMut, Hash, PartialEq, Clone, Copy, Eq, Debug)]
 pub struct Index(pub UVec2);
 
-#[derive(Resource, Default, Deref, DerefMut, PartialEq)]
-pub struct PickedSlotHandle(pub Option<Entity>);
-
 #[derive(Component, Deref, DerefMut, Clone, Copy, PartialEq)]
 pub struct InventoryHandle(pub Entity);
 
@@ -36,7 +31,6 @@ impl Plugin for InventoryPlugin {
     fn build(&self, app: &mut App) {
         
         app
-            .init_resource::<PickedSlotHandle>()
             .add_systems(Update, spawn_inventory)
             .add_observer(on_pointer_over)
             .add_observer(on_pointer_out)
@@ -58,8 +52,8 @@ fn spawn_inventory(
         .for_each(|(entity, inventory)| {
             commands.entity(entity)
                 .with_children(|spawner| {
-                    (0..SLOTS.x).into_iter()
-                        .flat_map(|x| (0..SLOTS.y).into_iter().map(move |y| (x, y)))
+                    (0..SLOTS.x)
+                        .flat_map(|x| (0..SLOTS.y).map(move |y| (x, y)))
                         .for_each(|(x, y)| {
                             let index = Index(UVec2::new(x, y));
 
@@ -79,7 +73,7 @@ fn spawn_inventory(
                                     is_hoverable: true,
                                 },
                                 Slot {
-                                    item: inventory.items.get(&index).map(|x| *x)
+                                    item: inventory.items.get(&index).copied()
                                 },
                                 index,
                                 SlotColor(Color::BLACK),

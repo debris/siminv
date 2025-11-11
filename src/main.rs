@@ -1,5 +1,5 @@
-use bevy::{ecs::{entity, query}, platform::collections::HashMap, prelude::*};
-use inventory::{Index, Inventory, InventoryPlugin, Slot};
+use bevy::{platform::collections::HashMap, prelude::*};
+use inventory::{Index, Inventory, InventoryPlugin};
 use item::{ItemPlugin, Items};
 
 mod inventory;

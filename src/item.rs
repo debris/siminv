@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use bevy::{ecs::query, platform::collections::HashMap, prelude::*, state::commands};
+use bevy::{platform::collections::HashMap, prelude::*};
 
 pub struct ItemPlugin;
 
@@ -115,10 +115,7 @@ impl Items {
 
     pub fn get_item_meta(&self, id: ItemId) -> Option<(&Item, &ItemType)> {
         self.get_item(id)
-            .and_then(|item| match self.get_item_type_with_tag(&item.tag) {
-                Some(item_type) => Some((item, item_type)),
-                None => None,
-            })
+            .and_then(|item| self.get_item_type_with_tag(&item.tag).map(|item_type| (item, item_type)))
     }
 
     /// TODO: return result
