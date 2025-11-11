@@ -1,8 +1,10 @@
 use bevy::{platform::collections::HashMap, prelude::*};
-use inventory::{Index, Inventory, InventoryPlugin};
-use item::{ItemPlugin, Items};
+use inventory_ui::{GridInventory, Index, InventoryPlugin};
+use inventory::Inventories;
+use item::{ItemPlugin, Items, ItemType};
 
 mod inventory;
+mod inventory_ui;
 mod item;
 
 fn main() {
@@ -20,6 +22,7 @@ struct MyInventoryMarker;
 fn setup(
     mut commands: Commands,
     mut items: ResMut<Items>,
+    mut inventories: ResMut<Inventories>,
 ) {
 
     let projection = OrthographicProjection {
@@ -33,6 +36,27 @@ fn setup(
         Camera2d,
         Projection::Orthographic(projection)
     ));
+    
+    items.register_item_type(ItemType {
+        tag: "sword".into(),
+        name: "Sword".into(),
+        sprite_path: "TODO".into(),
+        max_stack_size: 1,
+    });
+
+    items.register_item_type(ItemType {
+        tag: "bow".into(),
+        name: "Bow".into(),
+        sprite_path: "TODO".into(),
+        max_stack_size: 1,
+    });
+
+    items.register_item_type(ItemType {
+        tag: "stones".into(),
+        name: "Stones".into(),
+        sprite_path: "STONES".into(),
+        max_stack_size: 20,
+    });
 
     let sword_a = items.add_item("sword");
     let sword_b = items.add_item("sword");
@@ -40,65 +64,38 @@ fn setup(
     let stones_a = items.add_items("stones", 5);
     let stones_b = items.add_items("stones", 10);
     let stones_c = items.add_items("stones", 17);
+    let stones_d = items.add_items("stones", 5);
 
-    let mut i = HashMap::new();
-    i.insert(Index(UVec2::new(0, 2)), sword_a);
-    i.insert(Index(UVec2::new(1, 2)), sword_b);
-    i.insert(Index(UVec2::new(2, 2)), bow);
-    i.insert(Index(UVec2::new(3, 0)), stones_a);
-    i.insert(Index(UVec2::new(3, 1)), stones_b);
-    i.insert(Index(UVec2::new(3, 2)), stones_c);
+    let data = inventories.entry_mut("main");
+    data.set(Index::new(0, 2), sword_a);
+    data.set(Index::new(1, 2), sword_b);
+    data.set(Index::new(2, 2), bow);
+    data.set(Index::new(3, 0), stones_a);
+    data.set(Index::new(3, 1), stones_b);
+    data.set(Index::new(3, 2), stones_c);
 
-
+    let data = inventories.entry_mut("second");
+    data.set(Index::new(0, 0), stones_d);
+    
     commands.spawn((
-        Inventory { items: i },
-        MyInventoryMarker,
-        Visibility::Inherited,
+        GridInventory::new("main".into()),
         Node {
-            display: Display::Grid,
             align_self: AlignSelf::Center,
-            justify_self: JustifySelf::Center,
-            width: percent(50),
+            justify_self: JustifySelf::Start,
+            width: percent(40),
             height: percent(50),
             ..default()
         },
-        //BackgroundColor(Color::WHITE),
+    ));
+    commands.spawn((
+        GridInventory::new("second".into()),
+        Node {
+            align_self: AlignSelf::Center,
+            justify_self: JustifySelf::End,
+            width: percent(40),
+            height: percent(50),
+            ..default()
+        },
     ));
 }
-
-//fn draw_slot(
-    //mut commands: Commands,
-    //inventories: Query<&MyInventoryMarker>,
-    //query: Query<(Entity, &Index), Added<Slot>>
-//) {
-    //query
-        //.into_iter()
-        ////.filter(|(_, _, child_of)| inventories.get(child_of.parent()).is_ok())
-        //.for_each(|(entity, i)| {
-            //commands
-                //.entity(entity)
-                //.with_child((
-                    //Text::new(format!("{}:{}", i.x, i.y)),
-                    //Node {
-                        //width: percent(100),
-                        //height: percent(100),
-                        //align_self: AlignSelf::Center,
-                        //justify_self: JustifySelf::Center,
-                        //..default()
-                    //},
-                    //Pickable::IGNORE,
-                    //Node {
-                        //width: percent(100),
-                        //height: percent(100),
-                    //}
-                
-                //));
-        //});
-//}
-
-//fn on_save(
-    //query: Query<(Entity, Index), (With<Slot>, With<ItemStack<
-//) {
-    //query
-//}
 

@@ -7,8 +7,7 @@ pub struct ItemPlugin;
 impl Plugin for ItemPlugin {
     fn build(&self, app: &mut App) {
         app
-            .init_resource::<Items>()
-            .add_systems(Startup, setup_items);
+            .init_resource::<Items>();
     }
 }
 
@@ -159,31 +158,6 @@ impl Items {
             Some((None, Some(into_id)))
         }
     }
-}
-
-fn setup_items(
-    mut items: ResMut<Items>, 
-) {
-    items.register_item_type(ItemType {
-        tag: "sword".into(),
-        name: "Sword".into(),
-        sprite_path: "TODO".into(),
-        max_stack_size: 1,
-    });
-
-    items.register_item_type(ItemType {
-        tag: "bow".into(),
-        name: "Bow".into(),
-        sprite_path: "TODO".into(),
-        max_stack_size: 1,
-    });
-
-    items.register_item_type(ItemType {
-        tag: "stones".into(),
-        name: "Stones".into(),
-        sprite_path: "STONES".into(),
-        max_stack_size: 20,
-    });
 }
 
 #[cfg(test)]
