@@ -1,4 +1,4 @@
-use bevy::{platform::collections::HashMap, prelude::*};
+use bevy::prelude::*;
 use inventory_ui::{GridInventory, Index, InventoryPlugin};
 use inventory::Inventories;
 use item::{ItemPlugin, Items, ItemType};
@@ -78,24 +78,35 @@ fn setup(
     data.set(Index::new(0, 0), stones_d);
     
     commands.spawn((
-        GridInventory::new("main".into()),
         Node {
             align_self: AlignSelf::Center,
-            justify_self: JustifySelf::Start,
-            width: percent(40),
-            height: percent(50),
+            justify_self: JustifySelf::Center,
+            width: percent(100),
+            height: percent(100),
             ..default()
         },
-    ));
-    commands.spawn((
-        GridInventory::new("second".into()),
-        Node {
-            align_self: AlignSelf::Center,
-            justify_self: JustifySelf::End,
-            width: percent(40),
-            height: percent(50),
-            ..default()
-        },
+        children![
+        (
+            GridInventory::new("main".into()),
+            Node {
+                align_self: AlignSelf::Start,
+                justify_self: JustifySelf::Start,
+                width: percent(50),
+                height: percent(50),
+                ..default()
+            },
+        ),
+        (
+            GridInventory::new("second".into()),
+            Node {
+                align_self: AlignSelf::End,
+                justify_self: JustifySelf::End,
+                width: percent(50),
+                height: percent(50),
+                ..default()
+            },
+        )
+        ]
     ));
 }
 

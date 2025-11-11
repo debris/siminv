@@ -13,7 +13,7 @@ impl Inventories {
     }
 
     pub fn entry_mut(&mut self, name: &str) -> &mut InventoryData {
-        self.inventories_by_name.entry(name.to_owned()).or_insert_with(Default::default)
+        self.inventories_by_name.entry(name.to_owned()).or_default()
     }
 }
 

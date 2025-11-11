@@ -1,4 +1,4 @@
-use bevy::{platform::collections::HashMap, prelude::*};
+use bevy::prelude::*;
 
 use crate::{inventory::Inventories, item::{ItemId, Items}};
 
@@ -75,12 +75,11 @@ fn spawn_grid_inventory(
                         height: percent(100),
                         ..default()
                     },
-                    Children::spawn((
-                        (0..SLOTS.x)
+                    Children::spawn((0..SLOTS.x)
                         .flat_map(|x| (0..SLOTS.y).map(move |y| (x, y)))
                         .map(|(x, y)| { 
                             let index = Index(UVec2::new(x, y));
-                            ((
+                            (
                                 Node {
                                     position_type: PositionType::Absolute,
                                     grid_column: GridPlacement::start(x as i16 + 1),
@@ -102,8 +101,9 @@ fn spawn_grid_inventory(
                                 SlotColor(Color::BLACK),
                                 BackgroundColor(Color::BLACK),
                                 InventoryHandle(entity),
-                            ))
-                        }).collect::<Vec<_>>()))
+                                GlobalZIndex(0i32),
+                            )
+                        }).collect::<Vec<_>>())
                 ));
         });
 }
@@ -128,10 +128,11 @@ fn on_pointer_out(
 
 fn on_pointer_drag_start(
     on_drag_start: On<Pointer<DragStart>>,
-    mut query: Query<(&mut ZIndex), With<Slot>>,
+    mut query: Query<&mut GlobalZIndex, With<Slot>>,
 ) {
     if let Ok(mut z_index) = query.get_mut(on_drag_start.event_target()) {
         // we are draggin it. it should always be on the top
+        println!("set to 1k");
         z_index.0 = 1000;
     }
 }
@@ -147,11 +148,12 @@ fn on_pointer_drag(
 
 fn on_pointer_drag_end(
     on_drag_end: On<Pointer<DragEnd>>,
-    mut query: Query<(&mut UiTransform, &mut ZIndex), With<Slot>>,
+    mut query: Query<(&mut UiTransform, &mut GlobalZIndex), With<Slot>>,
 ) {
     if let Ok((mut transform, mut z_index)) = query.get_mut(on_drag_end.event_target()) {
         transform.translation = Val2::ZERO;
 
+        println!("set to 0");
         z_index.0 = 0;
     }
 }
