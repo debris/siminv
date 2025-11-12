@@ -180,7 +180,7 @@ fn on_big_weapon_slot_update(
     let display_text = match update.item {
         Some(item_id) => items.get_item_meta(item_id)
             .map(|item| item.display_name).expect("to be there"),
-        None => "empty",
+        None => "[weapon slot]",
     };
 
     commands.entity(update.entity)
