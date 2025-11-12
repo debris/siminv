@@ -1,4 +1,4 @@
-use bevy::{ecs::entity, prelude::*};
+use bevy::prelude::*;
 
 use crate::{inventory::Inventories, item::{ItemId, Items}};
 
