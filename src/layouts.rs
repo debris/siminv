@@ -6,6 +6,8 @@ pub struct GridInventoryConfig {
     pub rows: usize,
     pub slot_width: Val,
     pub slot_height: Val,
+    pub column_gap: Val,
+    pub row_gap: Val,
 }
 
 impl Default for GridInventoryConfig {
@@ -15,6 +17,8 @@ impl Default for GridInventoryConfig {
             rows: 4,
             slot_width: percent(100),
             slot_height: percent(100),
+            column_gap: px(10.),
+            row_gap: px(10.),
         }
     }
 }
@@ -30,8 +34,8 @@ pub fn build_grid_inventory<T: Component + Default>(
             justify_self: JustifySelf::Center,
             grid_template_columns: RepeatedGridTrack::flex(config.columns as u16, 1.0),
             grid_template_rows: RepeatedGridTrack::flex(config.rows as u16, 1.0),
-            column_gap: px(10.),
-            row_gap: px(10.),
+            column_gap: config.column_gap,
+            row_gap: config.row_gap,
             width: percent(100),
             height: percent(100),
             ..default()
@@ -49,8 +53,6 @@ pub fn build_grid_inventory<T: Component + Default>(
                         // work properly with grid and width + height in percent
                         //position_type: PositionType::Absolute,
                         border: UiRect::all(Val::Px(4.)),
-                        //grid_column: GridPlacement::start(x as i16 + 1),
-                        //grid_row: GridPlacement::start(y as i16 + 1),
                         align_self: AlignSelf::Center,
                         justify_self: JustifySelf::Center,
                         width: config.slot_width,

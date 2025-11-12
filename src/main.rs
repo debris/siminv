@@ -97,6 +97,7 @@ fn setup(
                 slot_height: px(80),
                 columns: 2, 
                 rows: 2,
+                ..default()
             })
         ]
     ));

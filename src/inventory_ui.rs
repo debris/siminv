@@ -79,21 +79,27 @@ fn on_pointer_out(
 
 fn on_pointer_drag_start(
     on_drag_start: On<Pointer<DragStart>>,
-    mut query: Query<&mut GlobalZIndex, With<Slot>>,
+    mut query: Query<(&Slot, &mut GlobalZIndex), With<Slot>>,
 ) {
-    if let Ok(mut z_index) = query.get_mut(on_drag_start.event_target()) {
-        // we are draggin it. it should always be on the top
-        println!("set to 1k");
-        z_index.0 = 1000;
+    if let Ok((slot, mut z_index)) = query.get_mut(on_drag_start.event_target()) {
+        // we can only drag items that have something inside
+        if slot.item.is_some() {
+            // we are draggin it. it should always be on the top
+            println!("set to 1k");
+            z_index.0 = 1000;
+        }
     }
 }
 
 fn on_pointer_drag(
     on_drag: On<Pointer<Drag>>,
-    mut query: Query<&mut UiTransform, With<Slot>>,
+    mut query: Query<(&Slot, &mut UiTransform), With<Slot>>,
 ) {
-    if let Ok(mut transform) = query.get_mut(on_drag.event_target()) {
-        transform.translation = Val2::px(on_drag.distance.x, on_drag.distance.y);
+    if let Ok((slot, mut transform)) = query.get_mut(on_drag.event_target()) {
+        // we can only drag items that have something inside
+        if slot.item.is_some() {
+            transform.translation = Val2::px(on_drag.distance.x, on_drag.distance.y);
+        }
     }
 }
 
@@ -115,12 +121,20 @@ fn on_pointer_drag_drop(
     mut items: ResMut<Items>,
 ) {
     if let Ok([mut into, mut slot]) = query.get_many_mut([on_drag_drop.event_target(), on_drag_drop.dropped]) {
-        if let Some(item_id) = slot.item && let Some(into_id) = into.item {
-            let (new_item, new_into) = items.merge_or_swap(item_id, into_id).expect("to be no error");
-            slot.item = new_item;
-            into.item = new_into;
-        } else {
-            core::mem::swap(&mut slot.item, &mut into.item);
+        match (slot.item, into.item) {
+            // merge or swap them
+            (Some(item_id), Some(into_id)) => {
+                let (new_item, new_into) = items.merge_or_swap(item_id, into_id).expect("to be no error");
+                slot.item = new_item;
+                into.item = new_into;
+            }
+            // move slot item onto empty space
+            (Some(_item_id), None) => {
+                core::mem::swap(&mut slot.item, &mut into.item);
+            }
+            // nothing if the grabbed slot does not contain an item
+            _ => {
+            }
         }
 
         // TODO: update inventory here
