@@ -1,11 +1,13 @@
 use bevy::{asset::ron, prelude::*};
-use inventory_ui::{GridInventory, Index, InventoryPlugin, Slot};
+use inventory_ui::{Index, InventoryPlugin, Slot};
 use inventory::Inventories;
 use item::{ItemPlugin, Items, ItemType};
+use layouts::{build_grid_inventory, GridInventoryConfig};
 
 mod inventory;
 mod inventory_ui;
 mod item;
+mod layouts;
 
 fn main() {
     App::new()
@@ -16,8 +18,11 @@ fn main() {
         .run();
 }
 
-#[derive(Component)]
-struct MyInventoryMarker;
+#[derive(Component, Default)]
+struct MainGrid;
+
+#[derive(Component, Default)]
+struct SecondGrid;
 
 fn setup(
     mut commands: Commands,
@@ -61,11 +66,8 @@ fn setup(
     data.set(Index::new(3, 1), stones_b);
     data.set(Index::new(3, 2), stones_c);
 
-    let data = inventories.entry_mut("second");
-    data.set(Index::new(0, 0), stones_d);
     
     commands.spawn((
-        GridInventory::new("main".into()),
         Node {
             align_self: AlignSelf::Start,
             justify_self: JustifySelf::Start,
@@ -73,9 +75,15 @@ fn setup(
             height: percent(50),
             ..default()
         },
+        children![
+            build_grid_inventory::<MainGrid>(data, &GridInventoryConfig::default())
+        ]
     ));
+
+    let data2 = inventories.entry_mut("second");
+    data2.set(Index::new(0, 0), stones_d);
+
     commands.spawn((
-        GridInventory::new("second".into()),
         Node {
             align_self: AlignSelf::End,
             justify_self: JustifySelf::End,
@@ -83,7 +91,16 @@ fn setup(
             height: percent(50),
             ..default()
         },
+        children![
+            build_grid_inventory::<SecondGrid>(data2, &GridInventoryConfig {
+                slot_width: px(80),
+                slot_height: px(80),
+                columns: 2, 
+                rows: 2,
+            })
+        ]
     ));
+
     commands.spawn((
         Slot::default(),
         Node {

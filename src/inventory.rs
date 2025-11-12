@@ -48,7 +48,7 @@ mod test {
 
 
         let mut inventory = Inventories::default();
-        inventory.data_mut("main").set(Index::new(0, 1), sword);
+        inventory.entry_mut("main").set(Index::new(0, 1), sword);
     }
 }
 

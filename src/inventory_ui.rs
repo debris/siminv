@@ -2,23 +2,6 @@ use bevy::{ecs::entity, prelude::*};
 
 use crate::{inventory::Inventories, item::{ItemId, Items}};
 
-const SLOTS: UVec2 = UVec2::new(4, 4);
-const SIZE: Vec2 = Vec2::new(64., 64.);
-const MOVE_SPEED: f32 = 1000.;
-
-#[derive(Component)]
-pub struct GridInventory {
-    tag: String,
-}
-
-impl GridInventory {
-    pub fn new(tag: String) -> Self {
-        Self {
-            tag
-        }
-    }
-}
-
 #[derive(Component, Default)]
 pub struct Slot {
     pub item: Option<ItemId>,
@@ -26,6 +9,9 @@ pub struct Slot {
 
 #[derive(Component)]
 pub struct SlotColor(Color);
+
+#[derive(Component)]
+pub struct OverColor(Color);
 
 #[derive(Component, Deref, DerefMut, Hash, PartialEq, Clone, Copy, Eq, Debug)]
 pub struct Index(pub UVec2);
@@ -36,9 +22,6 @@ impl Index {
     }
 }
 
-#[derive(Component, Deref, DerefMut, Clone, Copy, PartialEq)]
-pub struct InventoryHandle(pub Entity);
-
 pub struct InventoryPlugin;
 
 impl Plugin for InventoryPlugin {
@@ -46,7 +29,6 @@ impl Plugin for InventoryPlugin {
         
         app
             .init_resource::<Inventories>()
-            .add_systems(Update, spawn_grid_inventory)
             .add_systems(Update, setup_slot)
             .add_observer(on_pointer_over)
             .add_observer(on_pointer_out)
@@ -56,49 +38,6 @@ impl Plugin for InventoryPlugin {
             .add_observer(on_pointer_drag_drop)
             .add_systems(Update, update_slot);
     }
-}
-
-fn spawn_grid_inventory(
-    mut commands: Commands,
-    inventories: Res<Inventories>,
-    query: Query<(Entity, &GridInventory), Added<GridInventory>>,
-) {
-    query
-        .into_iter()
-        .for_each(move |(entity, inv)| {
-            commands.entity(entity)
-                .with_child((
-                    Node {
-                        display: Display::Grid,
-                        align_self: AlignSelf::Center,
-                        justify_self: JustifySelf::Center,
-                        width: percent(100),
-                        height: percent(100),
-                        ..default()
-                    },
-                    Children::spawn((0..SLOTS.x)
-                        .flat_map(|x| (0..SLOTS.y).map(move |y| (x, y)))
-                        .map(|(x, y)| { 
-                            let index = Index(UVec2::new(x, y));
-                            (
-                                Node {
-                                    position_type: PositionType::Absolute,
-                                    grid_column: GridPlacement::start(x as i16 + 1),
-                                    grid_row: GridPlacement::start(y as i16 + 1),
-                                    align_items: AlignItems::Center,
-                                    justify_items: JustifyItems::Center,
-                                    width: percent(100),
-                                    height: percent(100),
-                                    ..default()
-                                },
-                                Slot {
-                                    item: inventories.data(&inv.tag).expect("TODO").get(&index).copied()
-                                },
-                                index,
-                            )
-                        }).collect::<Vec<_>>())
-                ));
-        });
 }
 
 fn setup_slot(
@@ -112,9 +51,9 @@ fn setup_slot(
                     should_block_lower: false,
                     is_hoverable: true,
                 },
-                SlotColor(Color::BLACK),
+                SlotColor(Color::linear_rgba(0., 0., 0., 0.)),
+                OverColor(Color::linear_rgba(0.25, 0.25, 0.25, 0.25),),
                 BackgroundColor(Color::BLACK),
-                InventoryHandle(entity),
                 GlobalZIndex(0i32),
             ));
     }
@@ -122,10 +61,10 @@ fn setup_slot(
 
 fn on_pointer_over(
     over: On<Pointer<Over>>,
-    mut query: Query<(&SlotColor, &mut BackgroundColor), With<Slot>>,
+    mut query: Query<(&OverColor, &mut BackgroundColor), With<Slot>>,
 ) {
-    if let Ok((slot_color, mut background_color)) = query.get_mut(over.entity) {
-        background_color.0 = slot_color.0.lighter(0.1);
+    if let Ok((over_color, mut background_color)) = query.get_mut(over.entity) {
+        background_color.0 = over_color.0;
     }
 }
 
