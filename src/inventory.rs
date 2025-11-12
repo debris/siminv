@@ -1,6 +1,15 @@
 use bevy::{platform::collections::HashMap, prelude::*};
 
-use crate::{inventory_ui::Index, item::ItemId};
+use crate::item::ItemId;
+
+#[derive(Component, Deref, DerefMut, Hash, PartialEq, Clone, Copy, Eq, Debug)]
+pub struct Index(pub UVec2);
+
+impl Index {
+    pub fn new(x: u32, y: u32) -> Self {
+        Self(UVec2::new(x, y))
+    }
+}
 
 #[derive(Resource, Default)]
 pub struct Inventories {

@@ -1,11 +1,11 @@
 use bevy::{asset::ron, prelude::*};
-use inventory_ui::{Index, InventoryPlugin, Slot};
-use inventory::Inventories;
+use slot::{Slot, SlotAdd, SlotEvent, SlotOut, SlotOver, SlotPlugin, SlotUpdate};
+use inventory::{Inventories, Index};
 use item::{ItemPlugin, ItemType, Items, Tag};
 use layouts::{build_grid_inventory, GridInventoryConfig};
 
 mod inventory;
-mod inventory_ui;
+mod slot;
 mod item;
 mod layouts;
 
@@ -13,8 +13,14 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .add_plugins(ItemPlugin)
-        .add_plugins(InventoryPlugin)
+        .add_plugins(SlotPlugin)
         .add_systems(Startup, setup)
+        .add_observer(on_slot_add)
+        .add_observer(on_slot_over)
+        .add_observer(on_slot_out)
+        .add_observer(on_main_grid_slot_update)
+        .add_observer(on_big_weapon_slot_update)
+        .add_observer(on_second_grid_update)
         .run();
 }
 
@@ -23,6 +29,9 @@ struct MainGrid;
 
 #[derive(Component, Default)]
 struct SecondGrid;
+
+#[derive(Component)]
+struct BigWeaponSlot;
 
 fn setup(
     mut commands: Commands,
@@ -104,13 +113,98 @@ fn setup(
 
     commands.spawn((
         Slot::with_required_tag(Tag("weapon".into())),
+        BigWeaponSlot,
         Node {
             align_self: AlignSelf::Start,
             justify_self: JustifySelf::End,
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
             width: percent(50),
             height: percent(50),
             ..default()
         }
     ));
+}
+
+static MAIN_COLOR: Color = Color::linear_rgba(0., 0., 0., 0.);
+static OVER_COLOR: Color = Color::linear_rgba(0.25, 0.25, 0.25, 0.25);
+
+fn on_slot_add(
+    add: On<SlotEvent<SlotAdd>, Slot>,
+    mut commands: Commands,
+) {
+    commands.entity(add.entity)
+        .try_insert(BackgroundColor(MAIN_COLOR));
+}
+
+fn on_slot_over(
+    over: On<SlotEvent<SlotOver>, Slot>,
+    mut commands: Commands,
+) {
+    commands.entity(over.entity)
+        .try_insert(BackgroundColor(OVER_COLOR));
+}
+
+fn on_slot_out(
+    out: On<SlotEvent<SlotOut>, Slot>,
+    mut commands: Commands,
+) {
+    commands.entity(out.entity)
+        .try_insert(BackgroundColor(MAIN_COLOR));
+}
+
+fn on_main_grid_slot_update(
+    update: On<SlotEvent<SlotUpdate>, MainGrid>,
+    mut commands: Commands,
+    items: Res<Items>,
+) {
+    let display_text = match update.item {
+        Some(item_id) => items.get_item_meta(item_id)
+            .map(|item| format!("{} {}", item.display_name, item.stack_size)).expect("to be there"),
+        None => "".to_owned(),
+    };
+
+    commands.entity(update.entity)
+        .despawn_children()
+        .with_child((
+            Text::new(display_text),
+            Pickable::IGNORE,
+        ));
+}
+
+fn on_big_weapon_slot_update(
+    update: On<SlotEvent<SlotUpdate>, BigWeaponSlot>,
+    mut commands: Commands,
+    items: Res<Items>,
+) {
+    let display_text = match update.item {
+        Some(item_id) => items.get_item_meta(item_id)
+            .map(|item| item.display_name).expect("to be there"),
+        None => "empty",
+    };
+
+    commands.entity(update.entity)
+        .despawn_children()
+        .with_child((
+            Text::new(display_text),
+            Pickable::IGNORE,
+        ));
+}
+
+fn on_second_grid_update(
+    update: On<SlotEvent<SlotUpdate>, SecondGrid>,
+    mut commands: Commands,
+) {
+    let display_text = match update.item {
+        Some(_) => "?",
+        None => "x",
+    };
+    
+    commands.entity(update.entity)
+        .despawn_children()
+        .with_child((
+            Text::new(display_text),
+            Pickable::IGNORE,
+        ));
 }
 

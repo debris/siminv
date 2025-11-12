@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use crate::{inventory::InventoryData, inventory_ui::{Index, Slot}};
+use crate::{inventory::InventoryData, slot::Slot, inventory::Index};
 
 pub struct GridInventoryConfig {
     pub columns: usize,

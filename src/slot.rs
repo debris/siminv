@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{ecs::{component::{ComponentId, ComponentInfo}, event::EntityComponentsTrigger}, prelude::*};
 
 use crate::{inventory::Inventories, item::{ItemId, Items, Tag}};
 
@@ -41,23 +41,52 @@ pub struct SlotColor(Color);
 #[derive(Component)]
 pub struct OverColor(Color);
 
-#[derive(Component, Deref, DerefMut, Hash, PartialEq, Clone, Copy, Eq, Debug)]
-pub struct Index(pub UVec2);
+#[derive(Debug, Clone, EntityEvent)]
+#[entity_event(trigger = EntityComponentsTrigger<'a>)]
+pub struct SlotEvent<E> {
+    pub entity: Entity,
+    pub event: E,
+}
 
-impl Index {
-    pub fn new(x: u32, y: u32) -> Self {
-        Self(UVec2::new(x, y))
+impl<E> SlotEvent<E> {
+    pub fn new(entity: Entity, event: E) -> Self {
+        SlotEvent {
+            entity,
+            event,
+        }
     }
 }
 
-pub struct InventoryPlugin;
+impl<E> core::ops::Deref for SlotEvent<E> {
+    type Target = E;
 
-impl Plugin for InventoryPlugin {
+    fn deref(&self) -> &Self::Target {
+        &self.event
+    }
+}
+
+#[derive(Debug)]
+pub struct SlotAdd;
+
+#[derive(Debug)]
+pub struct SlotOver;
+
+#[derive(Debug)]
+pub struct SlotOut;
+
+#[derive(Debug)]
+pub struct SlotUpdate {
+    pub item: Option<ItemId>,
+}
+
+pub struct SlotPlugin;
+
+impl Plugin for SlotPlugin {
     fn build(&self, app: &mut App) {
         
         app
             .init_resource::<Inventories>()
-            .add_systems(Update, setup_slot)
+            .add_observer(on_add)
             .add_observer(on_pointer_over)
             .add_observer(on_pointer_out)
             .add_observer(on_pointer_drag_start)
@@ -68,40 +97,39 @@ impl Plugin for InventoryPlugin {
     }
 }
 
-fn setup_slot(
+fn on_add(
+    added: On<Add, Slot>,
     mut commands: Commands,
-    query: Query<Entity, Added<Slot>>,
 ) {
-    for entity in query {
-        commands.entity(entity)
-            .try_insert((
-                Pickable {
-                    should_block_lower: false,
-                    is_hoverable: true,
-                },
-                SlotColor(Color::linear_rgba(0., 0., 0., 0.)),
-                OverColor(Color::linear_rgba(0.25, 0.25, 0.25, 0.25),),
-                BackgroundColor(Color::linear_rgba(0., 0., 0., 0.)),
-                GlobalZIndex(0i32),
-            ));
-    }
+    commands.entity(added.entity)
+        .try_insert((
+            Pickable {
+                should_block_lower: false,
+                is_hoverable: true,
+            },
+            GlobalZIndex(0i32),
+        ));
+
+    commands.trigger_with_entity_components(SlotEvent::new(added.entity, SlotAdd));
 }
 
 fn on_pointer_over(
     over: On<Pointer<Over>>,
-    mut query: Query<(&OverColor, &mut BackgroundColor), With<Slot>>,
+    mut commands: Commands,
+    query: Query<&Slot>,
 ) {
-    if let Ok((over_color, mut background_color)) = query.get_mut(over.entity) {
-        background_color.0 = over_color.0;
+    if query.get(over.entity).is_ok() {
+        commands.trigger_with_entity_components(SlotEvent::new(over.entity, SlotOver));
     }
 }
 
 fn on_pointer_out(
     out: On<Pointer<Out>>,
-    mut query: Query<(&SlotColor, &mut BackgroundColor), With<Slot>>,
+    mut commands: Commands,
+    query: Query<&Slot>,
 ) {
-    if let Ok((slot_color, mut background_color)) = query.get_mut(out.entity) {
-        background_color.0 = slot_color.0;
+    if query.get(out.entity).is_ok() {
+        commands.trigger_with_entity_components(SlotEvent::new(out.entity, SlotOut));
     }
 }
 
@@ -113,7 +141,6 @@ fn on_pointer_drag_start(
         // we can only drag items that have something inside
         if slot.item.is_some() {
             // we are draggin it. it should always be on the top
-            println!("set to 1k");
             z_index.0 = 1000;
         }
     }
@@ -137,8 +164,6 @@ fn on_pointer_drag_end(
 ) {
     if let Ok((mut transform, mut z_index)) = query.get_mut(on_drag_end.event_target()) {
         transform.translation = Val2::ZERO;
-
-        println!("set to 0");
         z_index.0 = 0;
     }
 }
@@ -185,23 +210,34 @@ fn on_pointer_drag_drop(
 
 fn update_slot(
     mut commands: Commands,
-    items: Res<Items>,
     query: Query<(Entity, &Slot), Changed<Slot>>
 ) {
-    
+    // should we move it to drag drop?
     for (entity, slot) in query {
-        let mut entity_commands = commands.entity(entity);
-        entity_commands.despawn_children();
-
-        let Some(item) = slot.item.and_then(|item_id| items.get_item_meta(item_id))
-        else {
-            continue
-        };
-
-        entity_commands.with_child((
-            Text::new(format!("{}: {}", item.display_name, item.stack_size)),
-            Pickable::IGNORE,
-        ));
+        commands.trigger_with_entity_components(SlotEvent::new(entity, SlotUpdate {
+            item: slot.item,
+        }));
     };
+}
+
+pub trait TriggerWithEntityComponents {
+    fn trigger_with_entity_components<E: Send + Sync + 'static>(&mut self, event: SlotEvent<E>);
+}
+
+impl<'w, 's> TriggerWithEntityComponents for Commands<'w, 's> {
+    fn trigger_with_entity_components<E: Send + Sync + 'static>(&mut self, event: SlotEvent<E>) {
+        self.queue(move |world: &mut World| {
+            let Ok(iter) = world.inspect_entity(event.event_target())
+            else {
+                return
+            };
+
+            let ids = iter.map(|c| c.id()).collect::<Vec<_>>();
+
+            world.trigger_with(event, EntityComponentsTrigger {
+                components: &ids,
+            });
+        }); 
+    }
 }
 
