@@ -1,20 +1,23 @@
 [
     (
-        tag: "sword",
-        name: "Sword",
+        type_name: "sword",
+        display_name: "Sword",
         sprite_path: "TODO",
         max_stack_size: 1,
+        tags: [Tag("weapon")]
     ),
     (
-        tag: "bow",
-        name: "Bow",
+        type_name: "bow",
+        display_name: "Bow",
         sprite_path: "TODO",
         max_stack_size: 1,
+        tags: [Tag("weapon")]
     ),
     (
-        tag: "stones",
-        name: "Stones",
+        type_name: "stones",
+        display_name: "Stones",
         sprite_path: "TODO",
         max_stack_size: 20,
+        tags: []
     )
 ]

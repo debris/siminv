@@ -21,16 +21,21 @@ impl From<u64> for ItemTypeId {
     }
 }
 
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct Tag(pub String);
+
 #[derive(Debug, Deserialize)]
 pub struct ItemType {
-    /// Unique tag that can be used to identify this item type.
-    pub tag: String,
-    /// Name of the item.
-    pub name: String,
+    /// Unique type_name that can be used to identify this item type.
+    pub type_name: String,
+    /// Display name of the item.
+    pub display_name: String,
     /// Sprite path.
     pub sprite_path: String,
     /// Max quantity of items stacked in a single spot of the inventory.
     pub max_stack_size: u64,
+    /// Tags
+    pub tags: Vec<Tag>,
 }
 
 #[derive(Debug, PartialEq, Hash, Clone, Copy, Eq)]
@@ -42,10 +47,21 @@ impl From<u64> for ItemId {
     }
 }
 
+#[derive(Debug)]
 pub struct Item {
-    /// Unique tag that can be used to identify this item type.
-    pub tag: String,
+    /// Unique type_name that can be used to identify this item type.
+    pub type_name: String,
     pub stack_size: u64,
+}
+
+#[derive(Debug)]
+pub struct ItemMeta<'a> {
+    pub type_name: &'a str,
+    pub display_name: &'a str,
+    pub sprite_path: &'a str,
+    pub stack_size: u64,
+    pub max_stack_size: u64,
+    pub tags: &'a [Tag]
 }
 
 /// Generates item ids used in runtime.
@@ -76,25 +92,25 @@ pub struct Items {
     item_type_ids: IdFactory<ItemTypeId>,
     item_ids: IdFactory<ItemId>,
     item_types: HashMap<ItemTypeId, ItemType>,
-    item_types_by_tag: HashMap<String, ItemTypeId>,
+    item_types_by_type_name: HashMap<String, ItemTypeId>,
     items: HashMap<ItemId, Item>,
 }
 
 impl Items {
     pub fn register_item_type(&mut self, item_type: ItemType) -> ItemTypeId {
         let id = self.item_type_ids.next_id();
-        self.item_types_by_tag.insert(item_type.tag.clone(), id);
+        self.item_types_by_type_name.insert(item_type.type_name.clone(), id);
         self.item_types.insert(id, item_type);
         id
     }
 
-    pub fn add_item(&mut self, tag: &str) -> ItemId {
-        self.add_items(tag, 1)
+    pub fn add_item(&mut self, type_name: &str) -> ItemId {
+        self.add_items(type_name, 1)
     }
 
-    pub fn add_items(&mut self, tag: &str, count: u64) -> ItemId {
+    pub fn add_items(&mut self, type_name: &str, count: u64) -> ItemId {
         let item = Item {
-            tag: tag.to_string(),
+            type_name: type_name.to_string(),
             stack_size: count,
         };
 
@@ -107,14 +123,22 @@ impl Items {
         self.items.get(&id)
     }
 
-    pub fn get_item_type_with_tag(&self, tag: &str) -> Option<&ItemType> {
-        self.item_types_by_tag.get(tag)
+    pub fn get_item_type_with_type_name(&self, type_name: &str) -> Option<&ItemType> {
+        self.item_types_by_type_name.get(type_name)
             .and_then(|type_id| self.item_types.get(type_id))
     }
 
-    pub fn get_item_meta(&self, id: ItemId) -> Option<(&Item, &ItemType)> {
+    pub fn get_item_meta(&self, id: ItemId) -> Option<ItemMeta<'_>> {
         self.get_item(id)
-            .and_then(|item| self.get_item_type_with_tag(&item.tag).map(|item_type| (item, item_type)))
+            .and_then(|item| self.get_item_type_with_type_name(&item.type_name)
+                .map(|item_type| ItemMeta {
+                    type_name: &item.type_name,
+                    display_name: &item_type.display_name,
+                    sprite_path: &item_type.sprite_path,
+                    stack_size: item.stack_size,
+                    max_stack_size: item_type.max_stack_size,
+                    tags: &item_type.tags,
+                }))
     }
 
     /// TODO: return result
@@ -124,12 +148,12 @@ impl Items {
         let into = self.items.get(&into_id)?;
 
         // if they are of different types, just swap them
-        if item.tag != into.tag {
+        if item.type_name != into.type_name {
             return Some((Some(into_id), Some(item_id)));
         }
 
         // if they are the same type, check the max stack size
-        let item_type = self.get_item_type_with_tag(&item.tag)?;
+        let item_type = self.get_item_type_with_type_name(&item.type_name)?;
         // if the max stack size is 1, just swap them
         if item_type.max_stack_size == 1 {
             return Some((Some(into_id), Some(item_id)));

@@ -1,10 +1,38 @@
 use bevy::prelude::*;
 
-use crate::{inventory::Inventories, item::{ItemId, Items}};
+use crate::{inventory::Inventories, item::{ItemId, Items, Tag}};
 
 #[derive(Component, Default)]
 pub struct Slot {
     pub item: Option<ItemId>,
+    pub required_tag: Option<Tag>,
+}
+
+impl Slot {
+    pub fn empty() -> Self {
+        Slot::default()
+    }
+
+    pub fn with_item(item: ItemId) -> Self {
+        Slot {
+            item: Some(item),
+            required_tag: None,
+        }
+    }
+
+    pub fn with_required_tag(tag: Tag) -> Self {
+        Slot {
+            item: None,
+            required_tag: Some(tag),
+        }
+    }
+
+    pub fn matching_tag(&self, tags: &[Tag]) -> bool {
+        match self.required_tag {
+            None => true,
+            Some(ref tag) => tags.contains(tag)
+        }
+    }
 }
 
 #[derive(Component)]
@@ -53,7 +81,7 @@ fn setup_slot(
                 },
                 SlotColor(Color::linear_rgba(0., 0., 0., 0.)),
                 OverColor(Color::linear_rgba(0.25, 0.25, 0.25, 0.25),),
-                BackgroundColor(Color::BLACK),
+                BackgroundColor(Color::linear_rgba(0., 0., 0., 0.)),
                 GlobalZIndex(0i32),
             ));
     }
@@ -120,17 +148,31 @@ fn on_pointer_drag_drop(
     mut query: Query<&mut Slot>,
     mut items: ResMut<Items>,
 ) {
-    if let Ok([mut into, mut slot]) = query.get_many_mut([on_drag_drop.event_target(), on_drag_drop.dropped]) {
-        match (slot.item, into.item) {
+    if let Ok([mut slot_from, mut slot_into]) = query.get_many_mut([on_drag_drop.dropped, on_drag_drop.event_target()]) {
+        match (slot_from.item, slot_into.item) {
             // merge or swap them
-            (Some(item_id), Some(into_id)) => {
-                let (new_item, new_into) = items.merge_or_swap(item_id, into_id).expect("to be no error");
-                slot.item = new_item;
-                into.item = new_into;
+            (Some(from_id), Some(into_id)) => {
+                
+                // check if tags are matching
+                let from_item = items.get_item_meta(from_id).expect("to be there");
+                let into_item = items.get_item_meta(into_id).expect("to be there");
+                if !slot_from.matching_tag(&into_item.tags) || !slot_into.matching_tag(&from_item.tags) {
+                    return
+                }
+
+                
+                let (new_from, new_into) = items.merge_or_swap(from_id, into_id).expect("to be no error");
+                slot_from.item = new_from;
+                slot_into.item = new_into;
             }
             // move slot item onto empty space
-            (Some(_item_id), None) => {
-                core::mem::swap(&mut slot.item, &mut into.item);
+            (Some(from_id), None) => {
+                let from_item = items.get_item_meta(from_id).expect("to be there");
+                if !slot_into.matching_tag(&from_item.tags) {
+                    return
+                }
+
+                core::mem::swap(&mut slot_from.item, &mut slot_into.item);
             }
             // nothing if the grabbed slot does not contain an item
             _ => {
@@ -151,13 +193,13 @@ fn update_slot(
         let mut entity_commands = commands.entity(entity);
         entity_commands.despawn_children();
 
-        let Some((item, item_type)) = slot.item.and_then(|item_id| items.get_item_meta(item_id))
+        let Some(item) = slot.item.and_then(|item_id| items.get_item_meta(item_id))
         else {
             continue
         };
 
         entity_commands.with_child((
-            Text::new(format!("{}: {}", item_type.name, item.stack_size)),
+            Text::new(format!("{}: {}", item.display_name, item.stack_size)),
             Pickable::IGNORE,
         ));
     };

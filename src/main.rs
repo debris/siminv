@@ -1,7 +1,7 @@
 use bevy::{asset::ron, prelude::*};
 use inventory_ui::{Index, InventoryPlugin, Slot};
 use inventory::Inventories;
-use item::{ItemPlugin, Items, ItemType};
+use item::{ItemPlugin, ItemType, Items, Tag};
 use layouts::{build_grid_inventory, GridInventoryConfig};
 
 mod inventory;
@@ -103,7 +103,7 @@ fn setup(
     ));
 
     commands.spawn((
-        Slot::default(),
+        Slot::with_required_tag(Tag("weapon".into())),
         Node {
             align_self: AlignSelf::Start,
             justify_self: JustifySelf::End,

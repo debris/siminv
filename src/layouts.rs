@@ -4,10 +4,12 @@ use crate::{inventory::InventoryData, inventory_ui::{Index, Slot}};
 pub struct GridInventoryConfig {
     pub columns: usize,
     pub rows: usize,
-    pub slot_width: Val,
-    pub slot_height: Val,
     pub column_gap: Val,
     pub row_gap: Val,
+    pub slot_width: Val,
+    pub slot_height: Val,
+    pub slot_border: UiRect,
+    pub slot_border_color: Color,
 }
 
 impl Default for GridInventoryConfig {
@@ -19,6 +21,8 @@ impl Default for GridInventoryConfig {
             slot_height: percent(100),
             column_gap: px(10.),
             row_gap: px(10.),
+            slot_border: UiRect::DEFAULT,
+            slot_border_color: Color::WHITE,
         }
     }
 }
@@ -52,7 +56,7 @@ pub fn build_grid_inventory<T: Component + Default>(
                         // it should be relative according to the docs, but relative seems to not
                         // work properly with grid and width + height in percent
                         //position_type: PositionType::Absolute,
-                        border: UiRect::all(Val::Px(4.)),
+                        border: config.slot_border,
                         align_self: AlignSelf::Center,
                         justify_self: JustifySelf::Center,
                         width: config.slot_width,
@@ -60,7 +64,7 @@ pub fn build_grid_inventory<T: Component + Default>(
                         ..default()
                     },
                     BackgroundColor(Color::BLACK),
-                    BorderColor::all(Color::WHITE),
+                    BorderColor::all(config.slot_border_color),
                     children![
                     (
                         Node {
@@ -73,7 +77,8 @@ pub fn build_grid_inventory<T: Component + Default>(
                             ..default()
                         },
                         Slot {
-                            item: data.get(&index).copied()
+                            item: data.get(&index).copied(),
+                            ..default()
                         },
                         T::default(),
                         index,
