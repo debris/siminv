@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
-
 use bevy::{platform::collections::HashMap, prelude::*};
+use serde::Deserialize;
 
 pub struct ItemPlugin;
 
@@ -21,7 +21,7 @@ impl From<u64> for ItemTypeId {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize)]
 pub struct ItemType {
     /// Unique tag that can be used to identify this item type.
     pub tag: String,

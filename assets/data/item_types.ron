@@ -1,0 +1,20 @@
+[
+    (
+        tag: "sword",
+        name: "Sword",
+        sprite_path: "TODO",
+        max_stack_size: 1,
+    ),
+    (
+        tag: "bow",
+        name: "Bow",
+        sprite_path: "TODO",
+        max_stack_size: 1,
+    ),
+    (
+        tag: "stones",
+        name: "Stones",
+        sprite_path: "TODO",
+        max_stack_size: 20,
+    )
+]

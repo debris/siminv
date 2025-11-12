@@ -4027,6 +4027,7 @@ name = "simple_inventory"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "serde",
  "thiserror 2.0.17",
 ]
 

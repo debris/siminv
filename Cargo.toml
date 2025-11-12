@@ -5,4 +5,5 @@ edition = "2024"
 
 [dependencies]
 bevy = "0.17.2"
+serde = "1.0.228"
 thiserror = "2"

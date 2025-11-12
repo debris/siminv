@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{ecs::entity, prelude::*};
 
 use crate::{inventory::Inventories, item::{ItemId, Items}};
 
@@ -19,7 +19,7 @@ impl GridInventory {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct Slot {
     pub item: Option<ItemId>,
 }
@@ -47,6 +47,7 @@ impl Plugin for InventoryPlugin {
         app
             .init_resource::<Inventories>()
             .add_systems(Update, spawn_grid_inventory)
+            .add_systems(Update, setup_slot)
             .add_observer(on_pointer_over)
             .add_observer(on_pointer_out)
             .add_observer(on_pointer_drag_start)
@@ -90,22 +91,33 @@ fn spawn_grid_inventory(
                                     height: percent(100),
                                     ..default()
                                 },
-                                Pickable {
-                                    should_block_lower: false,
-                                    is_hoverable: true,
-                                },
                                 Slot {
                                     item: inventories.data(&inv.tag).expect("TODO").get(&index).copied()
                                 },
                                 index,
-                                SlotColor(Color::BLACK),
-                                BackgroundColor(Color::BLACK),
-                                InventoryHandle(entity),
-                                GlobalZIndex(0i32),
                             )
                         }).collect::<Vec<_>>())
                 ));
         });
+}
+
+fn setup_slot(
+    mut commands: Commands,
+    query: Query<Entity, Added<Slot>>,
+) {
+    for entity in query {
+        commands.entity(entity)
+            .try_insert((
+                Pickable {
+                    should_block_lower: false,
+                    is_hoverable: true,
+                },
+                SlotColor(Color::BLACK),
+                BackgroundColor(Color::BLACK),
+                InventoryHandle(entity),
+                GlobalZIndex(0i32),
+            ));
+    }
 }
 
 fn on_pointer_over(

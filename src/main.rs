@@ -1,5 +1,5 @@
-use bevy::prelude::*;
-use inventory_ui::{GridInventory, Index, InventoryPlugin};
+use bevy::{asset::ron, prelude::*};
+use inventory_ui::{GridInventory, Index, InventoryPlugin, Slot};
 use inventory::Inventories;
 use item::{ItemPlugin, Items, ItemType};
 
@@ -37,26 +37,13 @@ fn setup(
         Projection::Orthographic(projection)
     ));
     
-    items.register_item_type(ItemType {
-        tag: "sword".into(),
-        name: "Sword".into(),
-        sprite_path: "TODO".into(),
-        max_stack_size: 1,
-    });
+    const ITEMS_RON: &str = include_str!("../assets/data/item_types.ron");
+    let item_types: Vec<ItemType> = ron::from_str(ITEMS_RON).expect("Failed to parse item_types.ron");
 
-    items.register_item_type(ItemType {
-        tag: "bow".into(),
-        name: "Bow".into(),
-        sprite_path: "TODO".into(),
-        max_stack_size: 1,
-    });
-
-    items.register_item_type(ItemType {
-        tag: "stones".into(),
-        name: "Stones".into(),
-        sprite_path: "STONES".into(),
-        max_stack_size: 20,
-    });
+    for item_type in item_types {
+        println!("item type: {:?}", item_type);
+        items.register_item_type(item_type);
+    }
 
     let sword_a = items.add_item("sword");
     let sword_b = items.add_item("sword");
@@ -78,35 +65,34 @@ fn setup(
     data.set(Index::new(0, 0), stones_d);
     
     commands.spawn((
+        GridInventory::new("main".into()),
         Node {
-            align_self: AlignSelf::Center,
-            justify_self: JustifySelf::Center,
-            width: percent(100),
-            height: percent(100),
+            align_self: AlignSelf::Start,
+            justify_self: JustifySelf::Start,
+            width: percent(50),
+            height: percent(50),
             ..default()
         },
-        children![
-        (
-            GridInventory::new("main".into()),
-            Node {
-                align_self: AlignSelf::Start,
-                justify_self: JustifySelf::Start,
-                width: percent(50),
-                height: percent(50),
-                ..default()
-            },
-        ),
-        (
-            GridInventory::new("second".into()),
-            Node {
-                align_self: AlignSelf::End,
-                justify_self: JustifySelf::End,
-                width: percent(50),
-                height: percent(50),
-                ..default()
-            },
-        )
-        ]
+    ));
+    commands.spawn((
+        GridInventory::new("second".into()),
+        Node {
+            align_self: AlignSelf::End,
+            justify_self: JustifySelf::End,
+            width: percent(50),
+            height: percent(50),
+            ..default()
+        },
+    ));
+    commands.spawn((
+        Slot::default(),
+        Node {
+            align_self: AlignSelf::Start,
+            justify_self: JustifySelf::End,
+            width: percent(50),
+            height: percent(50),
+            ..default()
+        }
     ));
 }
 
