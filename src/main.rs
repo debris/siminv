@@ -29,7 +29,29 @@ struct ExampleAssets {
     #[asset(path = "images/slot_bg.png")]
     slot_background: Handle<Image>,
     #[asset(path = "images/slot_bg_over.png")]
-    slot_background_over: Handle<Image>
+    slot_background_over: Handle<Image>,
+
+    #[asset(texture_atlas_layout(tile_size_x = 32, tile_size_y = 32, columns = 11, rows = 22))]
+    icons_atlas: Handle<TextureAtlasLayout>,
+    #[asset(image(sampler(filter = nearest)))]
+    #[asset(path = "images/icons.png")]
+    icons: Handle<Image>,
+}
+
+impl ExampleAssets {
+    fn texture_atlast_for_item(&self, item: &str) -> TextureAtlas {
+        let index = match item {
+            "sword" => 56,
+            "bow" => 69,
+            "stones" => 188,
+            // empty spot
+            _ => 10
+        };
+
+        let mut atlas = TextureAtlas::from(self.icons_atlas.clone());
+        atlas.index = index;
+        atlas
+    }
 }
 
 fn main() {
@@ -45,9 +67,9 @@ fn main() {
 
         .add_plugins(ArmouryPlugin)
         
-        .add_observer(on_slot_add)
-        .add_observer(on_slot_over)
-        .add_observer(on_slot_out)
+        .add_observer(on_main_grid_slot_add)
+        .add_observer(on_main_grid_slot_over)
+        .add_observer(on_main_grid_slot_out)
 
         .add_observer(on_main_grid_background_add)
         .add_observer(on_second_grid_slot_background_add)
@@ -181,7 +203,6 @@ fn setup(
     ));
 }
 
-//const BG_COLOR: Color = Color::BLACK;
 const MAIN_COLOR: Color = Color::linear_rgba(0., 0., 0., 0.);
 const OVER_COLOR: Color = Color::linear_rgba(0.25, 0.25, 0.25, 0.25);
 
@@ -250,7 +271,7 @@ fn on_second_grid_slot_background_out(
     }
 }
 
-fn on_slot_add(
+fn on_main_grid_slot_add(
     add: On<SlotEvent<SlotAdd>, MainGrid>,
     mut commands: Commands,
 ) {
@@ -258,7 +279,7 @@ fn on_slot_add(
         .try_insert(BackgroundColor(MAIN_COLOR));
 }
 
-fn on_slot_over(
+fn on_main_grid_slot_over(
     over: On<SlotEvent<SlotOver>, MainGrid>,
     mut commands: Commands,
 ) {
@@ -266,7 +287,7 @@ fn on_slot_over(
         .try_insert(BackgroundColor(OVER_COLOR));
 }
 
-fn on_slot_out(
+fn on_main_grid_slot_out(
     out: On<SlotEvent<SlotOut>, MainGrid>,
     mut commands: Commands,
 ) {
@@ -315,17 +336,47 @@ fn on_big_weapon_slot_update(
 fn on_second_grid_update(
     update: On<SlotEvent<SlotUpdate>, SecondGrid>,
     mut commands: Commands,
+    assets: Res<ExampleAssets>,
+    items: Res<Items>,
 ) {
-    let display_text = match update.item {
-        Some(_) => "?",
-        None => "",
-    };
-    
     commands.entity(update.entity)
-        .despawn_children()
+        .despawn_children();
+
+    let meta = match update.item {
+        Some(item_id) => items.get_item_meta(item_id).expect("to be there"),
+        None => return,
+    };
+
+    commands.entity(update.entity)
         .with_child((
-            Text::new(display_text),
+            ImageNode::from_atlas_image(
+                assets.icons.clone(),
+                assets.texture_atlast_for_item(meta.type_name)
+            ),
+            Node {
+                position_type: PositionType::Absolute,
+                width: px(48),
+                height: px(48),
+                ..default()
+            },
             Pickable::IGNORE,
         ));
+
+    if meta.max_stack_size != 1 {
+        commands.entity(update.entity)
+            .with_child((
+                Text::new(format!("{}/{}", meta.stack_size, meta.max_stack_size)),
+                TextFont {
+                    font_size: 12.,
+                    ..default()
+                },
+                Node {
+                    align_self: AlignSelf::End,
+                    padding: UiRect::bottom(px(6)),
+                    ..default()
+                },
+                Pickable::IGNORE,
+            ));
+    }
 }
 
