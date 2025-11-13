@@ -1,4 +1,4 @@
-use bevy::{asset::ron, prelude::*};
+use bevy::{asset::ron, ecs::{entity, query}, image::TRANSPARENT_IMAGE_HANDLE, prelude::*};
 use plugin::ArmouryPlugin;
 use slot::Slot;
 use event::*;
@@ -16,6 +16,7 @@ mod grid;
 mod plugin;
 mod event;
 mod palette;
+mod tint;
 
 #[derive(Clone, Eq, PartialEq, Debug, Hash, Default, States)]
 enum GameState {
@@ -25,7 +26,7 @@ enum GameState {
 }
 
 #[derive(AssetCollection, Resource)]
-struct ExampleAssets {
+struct GameAssets {
     #[asset(path = "images/slot_bg.png")]
     slot_background: Handle<Image>,
     #[asset(path = "images/slot_bg_over.png")]
@@ -38,19 +39,21 @@ struct ExampleAssets {
     icons: Handle<Image>,
 }
 
-impl ExampleAssets {
+impl GameAssets {
     fn texture_atlast_for_item(&self, item: &str) -> TextureAtlas {
         let index = match item {
             "sword" => 56,
             "bow" => 69,
             "stones" => 188,
             // empty spot
-            _ => 10
+            _ => {
+                // warn here!
+                3
+            }
         };
 
-        let mut atlas = TextureAtlas::from(self.icons_atlas.clone());
-        atlas.index = index;
-        atlas
+        TextureAtlas::from(self.icons_atlas.clone())
+            .with_index(index)
     }
 }
 
@@ -61,23 +64,19 @@ fn main() {
         .init_state::<GameState>()
         .add_loading_state(
             LoadingState::new(GameState::AssetLoading)
-                .load_collection::<ExampleAssets>()
+                .load_collection::<GameAssets>()
                 .continue_to_state(GameState::Next)
         )
 
         .add_plugins(ArmouryPlugin)
         
-        .add_observer(on_main_grid_slot_add)
-        .add_observer(on_main_grid_slot_over)
-        .add_observer(on_main_grid_slot_out)
-
-        .add_observer(on_main_grid_background_add)
         .add_observer(on_second_grid_slot_background_add)
         .add_observer(on_second_grid_slot_background_over)
         .add_observer(on_second_grid_slot_background_out)
 
-        .add_observer(on_main_grid_slot_update)
         .add_observer(on_big_weapon_slot_update)
+
+        .add_observer(on_second_grid_add)
         .add_observer(on_second_grid_update)
 
         .add_systems(OnEnter(GameState::Next), setup)
@@ -97,6 +96,7 @@ fn setup(
     mut commands: Commands,
     mut items: ResMut<Items>,
     mut inventories: ResMut<Inventories>,
+    assets: Res<GameAssets>,
 ) {
 
     let projection = OrthographicProjection {
@@ -125,7 +125,6 @@ fn setup(
     let stones_a = items.add_items("stones", 5);
     let stones_b = items.add_items("stones", 10);
     let stones_c = items.add_items("stones", 17);
-    let stones_d = items.add_items("stones", 5);
 
     let data = inventories.entry_mut("main");
     data.set(Index::new(0, 2), sword_a);
@@ -148,33 +147,16 @@ fn setup(
 
     commands.spawn((
         Node {
-            align_self: AlignSelf::Start,
-            justify_self: JustifySelf::Start,
-            width: percent(50),
-            height: percent(50),
-            padding: UiRect::all(px(10.)),
-            ..default()
-        },
-        children![
-            build_grid_inventory::<MainGrid>(data, &GridInventoryConfig::default())
-        ]
-    ));
-
-    let data2 = inventories.entry_mut("second");
-    data2.set(Index::new(0, 0), stones_d);
-
-    commands.spawn((
-        Node {
             align_self: AlignSelf::End,
-            justify_self: JustifySelf::End,
+            justify_self: JustifySelf::Start,
             align_items: AlignItems::Center,
             justify_content: JustifyContent::Center,
-            width: percent(50),
+            width: percent(35),
             height: percent(50),
             ..default()
         },
         children![
-            build_grid_inventory::<SecondGrid>(data2, &GridInventoryConfig {
+            build_grid_inventory::<SecondGrid>(data, &GridInventoryConfig {
                 slot_width: px(80),
                 slot_height: px(80),
                 columns: 5, 
@@ -203,115 +185,55 @@ fn setup(
     ));
 }
 
-const MAIN_COLOR: Color = Color::linear_rgba(0., 0., 0., 0.);
-const OVER_COLOR: Color = Color::linear_rgba(0.25, 0.25, 0.25, 0.25);
-
-fn on_main_grid_background_add(
-    add: On<SlotEvent<SlotBackgroundAdd>, MainGrid>,
-    mut commands: Commands,
-    mut query: Query<&mut Node>
-) {
-    commands.entity(add.entity)
-        .try_insert((
-            BackgroundColor(palette::ColorPair::METAL.dark),
-            BorderColor::all(palette::ColorPair::DARK_WOOD.dark)
-        ));
-
-    if let Ok(mut node) = query.get_mut(add.entity) {
-        node.border = UiRect::all(px(4));
-    }
-}
+#[derive(Component)]
+struct SlotBackgroundImageHandle(Entity);
 
 fn on_second_grid_slot_background_add(
     add: On<SlotEvent<SlotBackgroundAdd>, SecondGrid>,
     mut commands: Commands,
-    assets: Res<ExampleAssets>,
+    assets: Res<GameAssets>,
 ) {
     let image = ImageNode::new(assets.slot_background.clone());
 
+    let id = commands.spawn((
+        image,
+        Node {
+            position_type: PositionType::Absolute,
+            width: percent(100),
+            height: percent(100),
+            ..default()
+        }
+    )).id();
+
     commands.entity(add.entity)
-        .with_child((
-            image,
-            Node {
-                position_type: PositionType::Absolute,
-                width: percent(100),
-                height: percent(100),
-                ..default()
-            }
-        ));
+        .try_insert(SlotBackgroundImageHandle(id))
+        .add_child(id);
 }
 
 fn on_second_grid_slot_background_over(
     over: On<SlotEvent<SlotBackgroundOver>, SecondGrid>,
-    query_children: Query<&Children>,
+    query_handle: Query<&SlotBackgroundImageHandle>,
     mut query: Query<&mut ImageNode>,
-    assets: Res<ExampleAssets>,
+    assets: Res<GameAssets>,
 ) {
-    if let Ok(children) = query_children.get(over.entity) {
-        for child in children {
-            if let Ok(mut image) = query.get_mut(*child) {
-                image.image = assets.slot_background_over.clone();
-            }
+    if let Ok(handle) = query_handle.get(over.entity) {
+        if let Ok(mut image) = query.get_mut(handle.0) {
+            image.image = assets.slot_background_over.clone();
         }
     }
 }
 
 fn on_second_grid_slot_background_out(
     out: On<SlotEvent<SlotBackgroundOut>, SecondGrid>,
-    query_children: Query<&Children>,
+    query_handle: Query<&SlotBackgroundImageHandle>,
     mut query: Query<&mut ImageNode>,
-    assets: Res<ExampleAssets>,
+    assets: Res<GameAssets>,
 ) {
-    if let Ok(children) = query_children.get(out.entity) {
-        for child in children {
-            if let Ok(mut image) = query.get_mut(*child) {
-                image.image = assets.slot_background.clone();
-            }
+    if let Ok(handle) = query_handle.get(out.entity) {
+        if let Ok(mut image) = query.get_mut(handle.0) {
+            image.image = assets.slot_background.clone();
         }
     }
-}
-
-fn on_main_grid_slot_add(
-    add: On<SlotEvent<SlotAdd>, MainGrid>,
-    mut commands: Commands,
-) {
-    commands.entity(add.entity)
-        .try_insert(BackgroundColor(MAIN_COLOR));
-}
-
-fn on_main_grid_slot_over(
-    over: On<SlotEvent<SlotOver>, MainGrid>,
-    mut commands: Commands,
-) {
-    commands.entity(over.entity)
-        .try_insert(BackgroundColor(OVER_COLOR));
-}
-
-fn on_main_grid_slot_out(
-    out: On<SlotEvent<SlotOut>, MainGrid>,
-    mut commands: Commands,
-) {
-    commands.entity(out.entity)
-        .try_insert(BackgroundColor(MAIN_COLOR));
-}
-
-fn on_main_grid_slot_update(
-    update: On<SlotEvent<SlotUpdate>, MainGrid>,
-    mut commands: Commands,
-    items: Res<Items>,
-) {
-    let display_text = match update.item {
-        Some(item_id) => items.get_item_meta(item_id)
-            .map(|item| format!("{} {}", item.display_name, item.stack_size)).expect("to be there"),
-        None => "".to_owned(),
-    };
-
-    commands.entity(update.entity)
-        .despawn_children()
-        .with_child((
-            Text::new(display_text),
-            Pickable::IGNORE,
-        ));
 }
 
 fn on_big_weapon_slot_update(
@@ -333,50 +255,78 @@ fn on_big_weapon_slot_update(
         ));
 }
 
+#[derive(Component)]
+struct SlotItemImageHandle(Entity);
+
+#[derive(Component)]
+struct SlotTextHandle(Entity);
+
+fn on_second_grid_add(
+    add: On<SlotEvent<SlotAdd>, SecondGrid>,
+    mut commands: Commands,
+) {
+    let image_id = commands.spawn((
+        ImageNode::default(),
+        Node {
+            position_type: PositionType::Absolute,
+            width: px(48),
+            height: px(48),
+            ..default()
+        },
+        Pickable::IGNORE,
+    )).id();
+
+    let text_id = commands.spawn((
+        Text::default(),
+        TextFont {
+            font_size: 12.,
+            ..default()
+        },
+        Node {
+            align_self: AlignSelf::End,
+            padding: UiRect::bottom(px(6)),
+            ..default()
+        },
+        Pickable::IGNORE,
+    )).id();
+
+    commands.entity(add.entity)
+        .try_insert((
+            SlotItemImageHandle(image_id),
+            SlotTextHandle(text_id),
+        ))
+        .add_children(&[image_id, text_id]);
+}
+
 fn on_second_grid_update(
     update: On<SlotEvent<SlotUpdate>, SecondGrid>,
-    mut commands: Commands,
-    assets: Res<ExampleAssets>,
+    query_handle: Query<(&SlotItemImageHandle, &SlotTextHandle)>,
+    mut query_image: Query<&mut ImageNode>,
+    mut query_text: Query<&mut Text>,
+    assets: Res<GameAssets>,
     items: Res<Items>,
 ) {
-    commands.entity(update.entity)
-        .despawn_children();
+    if let Ok((image_handle, text_handle)) = query_handle.get(update.entity) {
+        if let Ok(mut image) = query_image.get_mut(image_handle.0) && let Ok(mut text) = query_text.get_mut(text_handle.0) {
+            match update.item {
+                Some(item_id) => {
+                    let meta = items.get_item_meta(item_id).expect("to be there");
+                    *image = ImageNode::from_atlas_image(
+                        assets.icons.clone(),
+                        assets.texture_atlast_for_item(meta.type_name)
+                    );
+                    text.0 = match meta.max_stack_size {
+                        1 => "".to_owned(),
+                        _ => format!("{}/{}", meta.stack_size, meta.max_stack_size),
+                    };
 
-    let meta = match update.item {
-        Some(item_id) => items.get_item_meta(item_id).expect("to be there"),
-        None => return,
-    };
-
-    commands.entity(update.entity)
-        .with_child((
-            ImageNode::from_atlas_image(
-                assets.icons.clone(),
-                assets.texture_atlast_for_item(meta.type_name)
-            ),
-            Node {
-                position_type: PositionType::Absolute,
-                width: px(48),
-                height: px(48),
-                ..default()
-            },
-            Pickable::IGNORE,
-        ));
-
-    if meta.max_stack_size != 1 {
-        commands.entity(update.entity)
-            .with_child((
-                Text::new(format!("{}/{}", meta.stack_size, meta.max_stack_size)),
-                TextFont {
-                    font_size: 12.,
-                    ..default()
                 },
-                Node {
-                    align_self: AlignSelf::End,
-                    padding: UiRect::bottom(px(6)),
-                    ..default()
-                },
-                Pickable::IGNORE,
-            ));
+                None => {
+                    image.image = TRANSPARENT_IMAGE_HANDLE;
+                    text.0 = "".to_owned();
+                }
+            }
+        }
     }
 }
 
