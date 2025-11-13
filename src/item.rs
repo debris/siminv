@@ -2,15 +2,6 @@ use std::marker::PhantomData;
 use bevy::{platform::collections::HashMap, prelude::*};
 use serde::Deserialize;
 
-pub struct ItemPlugin;
-
-impl Plugin for ItemPlugin {
-    fn build(&self, app: &mut App) {
-        app
-            .init_resource::<Items>();
-    }
-}
-
 #[derive(Debug, PartialEq, Hash, Clone, Copy, Eq)]
 pub struct ItemTypeId(u64);
 

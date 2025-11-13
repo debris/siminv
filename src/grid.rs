@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use crate::{inventory::InventoryData, slot::Slot, inventory::Index};
+use crate::{event::{SlotEvent, TriggerSlotEvent}, inventory::{Index, InventoryData}, slot::Slot};
 
 pub struct GridInventoryConfig {
     pub columns: usize,
@@ -53,18 +53,17 @@ pub fn build_grid_inventory<T: Component + Default>(
                     // a wrapper to position a slot in the center of the grid cell
                     // we need it so when the user grabs a cell, there is something underneath
                     Node {
-                        // it should be relative according to the docs, but relative seems to not
-                        // work properly with grid and width + height in percent
-                        //position_type: PositionType::Absolute,
-                        border: config.slot_border,
+                        //border: config.slot_border,
                         align_self: AlignSelf::Center,
                         justify_self: JustifySelf::Center,
                         width: config.slot_width,
                         height: config.slot_height,
                         ..default()
                     },
-                    BackgroundColor(Color::BLACK),
-                    BorderColor::all(config.slot_border_color),
+                    GridBackground,
+                    T::default(),
+                    //BackgroundColor(Color::BLACK),
+                    //BorderColor::all(config.slot_border_color),
                     children![
                     (
                         Node {
@@ -89,5 +88,17 @@ pub fn build_grid_inventory<T: Component + Default>(
             }).collect::<Vec<_>>().into_iter()
             ))
     )
+}
+
+#[derive(Component)]
+pub(crate) struct GridBackground;
+
+pub struct GridBackgroundAdd;
+
+pub(crate) fn on_add(
+    added: On<Add, GridBackground> ,
+    mut commands: Commands,
+) {
+    commands.trigger_slot_event(SlotEvent::new(added.entity, GridBackgroundAdd));
 }
 

@@ -1,20 +1,25 @@
-use bevy::{asset::ron, prelude::*};
-use slot::{Slot, SlotAdd, SlotEvent, SlotOut, SlotOver, SlotPlugin, SlotUpdate};
+use bevy::{asset::ron, ecs::system::command, prelude::*};
+use plugin::ArmouryPlugin;
+use slot::Slot;
+use event::*;
 use inventory::{Inventories, Index};
-use item::{ItemPlugin, ItemType, Items, Tag};
-use layouts::{build_grid_inventory, GridInventoryConfig};
+use item::{ItemType, Items, Tag};
+use grid::{GridBackgroundAdd, GridInventoryConfig, build_grid_inventory};
 
+mod double_click;
 mod inventory;
 mod slot;
 mod item;
-mod layouts;
+mod grid;
+mod plugin;
+mod event;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
-        .add_plugins(ItemPlugin)
-        .add_plugins(SlotPlugin)
+        .add_plugins(ArmouryPlugin)
         .add_systems(Startup, setup)
+        .add_observer(on_background_add)
         .add_observer(on_slot_add)
         .add_observer(on_slot_over)
         .add_observer(on_slot_out)
@@ -126,8 +131,17 @@ fn setup(
     ));
 }
 
+static BG_COLOR: Color = Color::BLACK;
 static MAIN_COLOR: Color = Color::linear_rgba(0., 0., 0., 0.);
 static OVER_COLOR: Color = Color::linear_rgba(0.25, 0.25, 0.25, 0.25);
+
+fn on_background_add(
+    add: On<SlotEvent<GridBackgroundAdd>, MainGrid>,
+    mut commands: Commands,
+) {
+    commands.entity(add.entity)
+        .try_insert(BackgroundColor(BG_COLOR));
+}
 
 fn on_slot_add(
     add: On<SlotEvent<SlotAdd>, Slot>,

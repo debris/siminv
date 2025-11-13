@@ -1,6 +1,6 @@
-use bevy::{ecs::{component::{ComponentId, ComponentInfo}, event::EntityComponentsTrigger}, prelude::*};
+use bevy::prelude::*;
 
-use crate::{inventory::Inventories, item::{ItemId, Items, Tag}};
+use crate::{event::*, item::{ItemId, Items, Tag}};
 
 #[derive(Component, Default)]
 pub struct Slot {
@@ -41,63 +41,7 @@ pub struct SlotColor(Color);
 #[derive(Component)]
 pub struct OverColor(Color);
 
-#[derive(Debug, Clone, EntityEvent)]
-#[entity_event(trigger = EntityComponentsTrigger<'a>)]
-pub struct SlotEvent<E> {
-    pub entity: Entity,
-    pub event: E,
-}
-
-impl<E> SlotEvent<E> {
-    pub fn new(entity: Entity, event: E) -> Self {
-        SlotEvent {
-            entity,
-            event,
-        }
-    }
-}
-
-impl<E> core::ops::Deref for SlotEvent<E> {
-    type Target = E;
-
-    fn deref(&self) -> &Self::Target {
-        &self.event
-    }
-}
-
-#[derive(Debug)]
-pub struct SlotAdd;
-
-#[derive(Debug)]
-pub struct SlotOver;
-
-#[derive(Debug)]
-pub struct SlotOut;
-
-#[derive(Debug)]
-pub struct SlotUpdate {
-    pub item: Option<ItemId>,
-}
-
-pub struct SlotPlugin;
-
-impl Plugin for SlotPlugin {
-    fn build(&self, app: &mut App) {
-        
-        app
-            .init_resource::<Inventories>()
-            .add_observer(on_add)
-            .add_observer(on_pointer_over)
-            .add_observer(on_pointer_out)
-            .add_observer(on_pointer_drag_start)
-            .add_observer(on_pointer_drag)
-            .add_observer(on_pointer_drag_end)
-            .add_observer(on_pointer_drag_drop)
-            .add_systems(Update, update_slot);
-    }
-}
-
-fn on_add(
+pub(crate) fn on_add(
     added: On<Add, Slot>,
     mut commands: Commands,
 ) {
@@ -110,30 +54,30 @@ fn on_add(
             GlobalZIndex(0i32),
         ));
 
-    commands.trigger_with_entity_components(SlotEvent::new(added.entity, SlotAdd));
+    commands.trigger_slot_event(SlotEvent::new(added.entity, SlotAdd));
 }
 
-fn on_pointer_over(
+pub(crate) fn on_pointer_over(
     over: On<Pointer<Over>>,
     mut commands: Commands,
     query: Query<&Slot>,
 ) {
     if query.get(over.entity).is_ok() {
-        commands.trigger_with_entity_components(SlotEvent::new(over.entity, SlotOver));
+        commands.trigger_slot_event(SlotEvent::new(over.entity, SlotOver));
     }
 }
 
-fn on_pointer_out(
+pub(crate) fn on_pointer_out(
     out: On<Pointer<Out>>,
     mut commands: Commands,
     query: Query<&Slot>,
 ) {
     if query.get(out.entity).is_ok() {
-        commands.trigger_with_entity_components(SlotEvent::new(out.entity, SlotOut));
+        commands.trigger_slot_event(SlotEvent::new(out.entity, SlotOut));
     }
 }
 
-fn on_pointer_drag_start(
+pub(crate) fn on_pointer_drag_start(
     on_drag_start: On<Pointer<DragStart>>,
     mut query: Query<(&Slot, &mut GlobalZIndex), With<Slot>>,
 ) {
@@ -146,7 +90,7 @@ fn on_pointer_drag_start(
     }
 }
 
-fn on_pointer_drag(
+pub(crate) fn on_pointer_drag(
     on_drag: On<Pointer<Drag>>,
     mut query: Query<(&Slot, &mut UiTransform), With<Slot>>,
 ) {
@@ -158,7 +102,7 @@ fn on_pointer_drag(
     }
 }
 
-fn on_pointer_drag_end(
+pub(crate) fn on_pointer_drag_end(
     on_drag_end: On<Pointer<DragEnd>>,
     mut query: Query<(&mut UiTransform, &mut GlobalZIndex), With<Slot>>,
 ) {
@@ -168,8 +112,9 @@ fn on_pointer_drag_end(
     }
 }
 
-fn on_pointer_drag_drop(
+pub(crate) fn on_pointer_drag_drop(
     on_drag_drop: On<Pointer<DragDrop>>,
+    mut commands: Commands,
     mut query: Query<&mut Slot>,
     mut items: ResMut<Items>,
 ) {
@@ -181,7 +126,7 @@ fn on_pointer_drag_drop(
                 // check if tags are matching
                 let from_item = items.get_item_meta(from_id).expect("to be there");
                 let into_item = items.get_item_meta(into_id).expect("to be there");
-                if !slot_from.matching_tag(&into_item.tags) || !slot_into.matching_tag(&from_item.tags) {
+                if !slot_from.matching_tag(into_item.tags) || !slot_into.matching_tag(from_item.tags) {
                     return
                 }
 
@@ -189,15 +134,21 @@ fn on_pointer_drag_drop(
                 let (new_from, new_into) = items.merge_or_swap(from_id, into_id).expect("to be no error");
                 slot_from.item = new_from;
                 slot_into.item = new_into;
+
+                // unselect the previous item to prevent blink before pointer out triggers
+                commands.trigger_slot_event(SlotEvent::new(on_drag_drop.dropped, SlotOut));
             }
             // move slot item onto empty space
             (Some(from_id), None) => {
                 let from_item = items.get_item_meta(from_id).expect("to be there");
-                if !slot_into.matching_tag(&from_item.tags) {
+                if !slot_into.matching_tag(from_item.tags) {
                     return
                 }
 
                 core::mem::swap(&mut slot_from.item, &mut slot_into.item);
+
+                // unselect the previous item to prevent blink before pointer out triggers
+                commands.trigger_slot_event(SlotEvent::new(on_drag_drop.dropped, SlotOut));
             }
             // nothing if the grabbed slot does not contain an item
             _ => {
@@ -208,36 +159,15 @@ fn on_pointer_drag_drop(
     }
 }
 
-fn update_slot(
+pub(crate) fn update_slot(
     mut commands: Commands,
     query: Query<(Entity, &Slot), Changed<Slot>>
 ) {
     // should we move it to drag drop?
     for (entity, slot) in query {
-        commands.trigger_with_entity_components(SlotEvent::new(entity, SlotUpdate {
+        commands.trigger_slot_event(SlotEvent::new(entity, SlotUpdate {
             item: slot.item,
         }));
     };
-}
-
-pub trait TriggerWithEntityComponents {
-    fn trigger_with_entity_components<E: Send + Sync + 'static>(&mut self, event: SlotEvent<E>);
-}
-
-impl<'w, 's> TriggerWithEntityComponents for Commands<'w, 's> {
-    fn trigger_with_entity_components<E: Send + Sync + 'static>(&mut self, event: SlotEvent<E>) {
-        self.queue(move |world: &mut World| {
-            let Ok(iter) = world.inspect_entity(event.event_target())
-            else {
-                return
-            };
-
-            let ids = iter.map(|c| c.id()).collect::<Vec<_>>();
-
-            world.trigger_with(event, EntityComponentsTrigger {
-                components: &ids,
-            });
-        }); 
-    }
 }
 
