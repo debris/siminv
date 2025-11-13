@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use crate::{event::{SlotEvent, TriggerSlotEvent}, inventory::{Index, InventoryData}, slot::Slot};
+use crate::{event::{SlotEvent, TriggerSlotEvent}, inventory::{Index, InventoryData}, slot::Slot, slot_background::SlotBackground};
 
 pub struct GridInventoryConfig {
     pub columns: usize,
@@ -8,8 +8,8 @@ pub struct GridInventoryConfig {
     pub row_gap: Val,
     pub slot_width: Val,
     pub slot_height: Val,
-    pub slot_border: UiRect,
-    pub slot_border_color: Color,
+    pub width: Val,
+    pub height: Val,
 }
 
 impl Default for GridInventoryConfig {
@@ -21,8 +21,8 @@ impl Default for GridInventoryConfig {
             slot_height: percent(100),
             column_gap: px(10.),
             row_gap: px(10.),
-            slot_border: UiRect::DEFAULT,
-            slot_border_color: Color::WHITE,
+            width: percent(100),
+            height: percent(100),
         }
     }
 }
@@ -40,8 +40,8 @@ pub fn build_grid_inventory<T: Component + Default>(
             grid_template_rows: RepeatedGridTrack::flex(config.rows as u16, 1.0),
             column_gap: config.column_gap,
             row_gap: config.row_gap,
-            width: percent(100),
-            height: percent(100),
+            width: config.width,
+            height: config.height,
             ..default()
         },
         Children::spawn(SpawnIter(
@@ -53,17 +53,14 @@ pub fn build_grid_inventory<T: Component + Default>(
                     // a wrapper to position a slot in the center of the grid cell
                     // we need it so when the user grabs a cell, there is something underneath
                     Node {
-                        //border: config.slot_border,
                         align_self: AlignSelf::Center,
                         justify_self: JustifySelf::Center,
                         width: config.slot_width,
                         height: config.slot_height,
                         ..default()
                     },
-                    GridBackground,
+                    SlotBackground,
                     T::default(),
-                    //BackgroundColor(Color::BLACK),
-                    //BorderColor::all(config.slot_border_color),
                     children![
                     (
                         Node {
@@ -90,15 +87,4 @@ pub fn build_grid_inventory<T: Component + Default>(
     )
 }
 
-#[derive(Component)]
-pub(crate) struct GridBackground;
-
-pub struct GridBackgroundAdd;
-
-pub(crate) fn on_add(
-    added: On<Add, GridBackground> ,
-    mut commands: Commands,
-) {
-    commands.trigger_slot_event(SlotEvent::new(added.entity, GridBackgroundAdd));
-}
 

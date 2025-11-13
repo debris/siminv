@@ -35,12 +35,6 @@ impl Slot {
     }
 }
 
-#[derive(Component)]
-pub struct SlotColor(Color);
-
-#[derive(Component)]
-pub struct OverColor(Color);
-
 pub(crate) fn on_add(
     added: On<Add, Slot>,
     mut commands: Commands,

@@ -1,31 +1,64 @@
-use bevy::{asset::ron, ecs::system::command, prelude::*};
+use bevy::{asset::ron, prelude::*};
 use plugin::ArmouryPlugin;
 use slot::Slot;
 use event::*;
 use inventory::{Inventories, Index};
 use item::{ItemType, Items, Tag};
-use grid::{GridBackgroundAdd, GridInventoryConfig, build_grid_inventory};
+use grid::{GridInventoryConfig, build_grid_inventory};
+use bevy_asset_loader::prelude::*;
 
 mod double_click;
 mod inventory;
 mod slot;
+mod slot_background;
 mod item;
 mod grid;
 mod plugin;
 mod event;
+mod palette;
+
+#[derive(Clone, Eq, PartialEq, Debug, Hash, Default, States)]
+enum GameState {
+    #[default]
+    AssetLoading,
+    Next,
+}
+
+#[derive(AssetCollection, Resource)]
+struct ExampleAssets {
+    #[asset(path = "images/slot_bg.png")]
+    slot_background: Handle<Image>,
+    #[asset(path = "images/slot_bg_over.png")]
+    slot_background_over: Handle<Image>
+}
 
 fn main() {
+
     App::new()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
+        .init_state::<GameState>()
+        .add_loading_state(
+            LoadingState::new(GameState::AssetLoading)
+                .load_collection::<ExampleAssets>()
+                .continue_to_state(GameState::Next)
+        )
+
         .add_plugins(ArmouryPlugin)
-        .add_systems(Startup, setup)
-        .add_observer(on_background_add)
+        
         .add_observer(on_slot_add)
         .add_observer(on_slot_over)
         .add_observer(on_slot_out)
+
+        .add_observer(on_main_grid_background_add)
+        .add_observer(on_second_grid_slot_background_add)
+        .add_observer(on_second_grid_slot_background_over)
+        .add_observer(on_second_grid_slot_background_out)
+
         .add_observer(on_main_grid_slot_update)
         .add_observer(on_big_weapon_slot_update)
         .add_observer(on_second_grid_update)
+
+        .add_systems(OnEnter(GameState::Next), setup)
         .run();
 }
 
@@ -83,10 +116,21 @@ fn setup(
     
     commands.spawn((
         Node {
+            width: percent(100),
+            height: percent(100),
+            ..default()
+        },
+        BackgroundColor(palette::ColorPair::METAL.light),
+        GlobalZIndex(-1),
+    ));
+
+    commands.spawn((
+        Node {
             align_self: AlignSelf::Start,
             justify_self: JustifySelf::Start,
             width: percent(50),
             height: percent(50),
+            padding: UiRect::all(px(10.)),
             ..default()
         },
         children![
@@ -101,6 +145,8 @@ fn setup(
         Node {
             align_self: AlignSelf::End,
             justify_self: JustifySelf::End,
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
             width: percent(50),
             height: percent(50),
             ..default()
@@ -109,8 +155,12 @@ fn setup(
             build_grid_inventory::<SecondGrid>(data2, &GridInventoryConfig {
                 slot_width: px(80),
                 slot_height: px(80),
-                columns: 2, 
-                rows: 2,
+                columns: 5, 
+                rows: 3,
+                row_gap: px(0),
+                column_gap: px(0),
+                width: px(80 * 5),
+                height: px(80 * 3),
                 ..default()
             })
         ]
@@ -131,20 +181,77 @@ fn setup(
     ));
 }
 
-static BG_COLOR: Color = Color::BLACK;
-static MAIN_COLOR: Color = Color::linear_rgba(0., 0., 0., 0.);
-static OVER_COLOR: Color = Color::linear_rgba(0.25, 0.25, 0.25, 0.25);
+//const BG_COLOR: Color = Color::BLACK;
+const MAIN_COLOR: Color = Color::linear_rgba(0., 0., 0., 0.);
+const OVER_COLOR: Color = Color::linear_rgba(0.25, 0.25, 0.25, 0.25);
 
-fn on_background_add(
-    add: On<SlotEvent<GridBackgroundAdd>, MainGrid>,
+fn on_main_grid_background_add(
+    add: On<SlotEvent<SlotBackgroundAdd>, MainGrid>,
     mut commands: Commands,
+    mut query: Query<&mut Node>
 ) {
     commands.entity(add.entity)
-        .try_insert(BackgroundColor(BG_COLOR));
+        .try_insert((
+            BackgroundColor(palette::ColorPair::METAL.dark),
+            BorderColor::all(palette::ColorPair::DARK_WOOD.dark)
+        ));
+
+    if let Ok(mut node) = query.get_mut(add.entity) {
+        node.border = UiRect::all(px(4));
+    }
+}
+
+fn on_second_grid_slot_background_add(
+    add: On<SlotEvent<SlotBackgroundAdd>, SecondGrid>,
+    mut commands: Commands,
+    assets: Res<ExampleAssets>,
+) {
+    let image = ImageNode::new(assets.slot_background.clone());
+
+    commands.entity(add.entity)
+        .with_child((
+            image,
+            Node {
+                position_type: PositionType::Absolute,
+                width: percent(100),
+                height: percent(100),
+                ..default()
+            }
+        ));
+}
+
+fn on_second_grid_slot_background_over(
+    over: On<SlotEvent<SlotBackgroundOver>, SecondGrid>,
+    query_children: Query<&Children>,
+    mut query: Query<&mut ImageNode>,
+    assets: Res<ExampleAssets>,
+) {
+    if let Ok(children) = query_children.get(over.entity) {
+        for child in children {
+            if let Ok(mut image) = query.get_mut(*child) {
+                image.image = assets.slot_background_over.clone();
+            }
+        }
+    }
+}
+
+fn on_second_grid_slot_background_out(
+    out: On<SlotEvent<SlotBackgroundOut>, SecondGrid>,
+    query_children: Query<&Children>,
+    mut query: Query<&mut ImageNode>,
+    assets: Res<ExampleAssets>,
+) {
+    if let Ok(children) = query_children.get(out.entity) {
+        for child in children {
+            if let Ok(mut image) = query.get_mut(*child) {
+                image.image = assets.slot_background.clone();
+            }
+        }
+    }
 }
 
 fn on_slot_add(
-    add: On<SlotEvent<SlotAdd>, Slot>,
+    add: On<SlotEvent<SlotAdd>, MainGrid>,
     mut commands: Commands,
 ) {
     commands.entity(add.entity)
@@ -152,7 +259,7 @@ fn on_slot_add(
 }
 
 fn on_slot_over(
-    over: On<SlotEvent<SlotOver>, Slot>,
+    over: On<SlotEvent<SlotOver>, MainGrid>,
     mut commands: Commands,
 ) {
     commands.entity(over.entity)
@@ -160,7 +267,7 @@ fn on_slot_over(
 }
 
 fn on_slot_out(
-    out: On<SlotEvent<SlotOut>, Slot>,
+    out: On<SlotEvent<SlotOut>, MainGrid>,
     mut commands: Commands,
 ) {
     commands.entity(out.entity)
@@ -211,7 +318,7 @@ fn on_second_grid_update(
 ) {
     let display_text = match update.item {
         Some(_) => "?",
-        None => "x",
+        None => "",
     };
     
     commands.entity(update.entity)

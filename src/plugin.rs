@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{inventory::Inventories, item::Items, slot, grid};
+use crate::{inventory::Inventories, item::Items, slot, slot_background};
 
 pub struct ArmouryPlugin;
 
@@ -17,7 +17,9 @@ impl Plugin for ArmouryPlugin {
             .add_observer(slot::on_pointer_drag_end)
             .add_observer(slot::on_pointer_drag_drop)
             .add_systems(Update, slot::update_slot)
-            .add_observer(grid::on_add);
+            .add_observer(slot_background::on_add)
+            .add_observer(slot_background::on_pointer_over)
+            .add_observer(slot_background::on_pointer_out);
     }
 }
 

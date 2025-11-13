@@ -21,8 +21,6 @@ pub struct ItemType {
     pub type_name: String,
     /// Display name of the item.
     pub display_name: String,
-    /// Sprite path.
-    pub sprite_path: String,
     /// Max quantity of items stacked in a single spot of the inventory.
     pub max_stack_size: u64,
     /// Tags
@@ -49,7 +47,6 @@ pub struct Item {
 pub struct ItemMeta<'a> {
     pub type_name: &'a str,
     pub display_name: &'a str,
-    pub sprite_path: &'a str,
     pub stack_size: u64,
     pub max_stack_size: u64,
     pub tags: &'a [Tag]
@@ -125,7 +122,6 @@ impl Items {
                 .map(|item_type| ItemMeta {
                     type_name: &item.type_name,
                     display_name: &item_type.display_name,
-                    sprite_path: &item_type.sprite_path,
                     stack_size: item.stack_size,
                     max_stack_size: item_type.max_stack_size,
                     tags: &item_type.tags,
