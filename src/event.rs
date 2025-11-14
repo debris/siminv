@@ -1,6 +1,6 @@
 use bevy::{ecs::event::EntityComponentsTrigger, prelude::*};
 
-use crate::item::ItemId;
+use crate::item::{ItemId, Tag};
 
 #[derive(Debug, Clone, EntityEvent)]
 #[entity_event(trigger = EntityComponentsTrigger<'a>)]
@@ -38,6 +38,7 @@ pub struct SlotOut;
 #[derive(Debug)]
 pub struct SlotUpdate {
     pub item: Option<ItemId>,
+    pub required_tag: Option<Tag>,
 }
 
 #[derive(Debug)]

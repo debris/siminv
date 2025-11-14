@@ -12,7 +12,7 @@ impl From<u64> for ItemTypeId {
     }
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Clone)]
 pub struct Tag(pub String);
 
 #[derive(Debug, Deserialize)]

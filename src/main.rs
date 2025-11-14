@@ -165,6 +165,12 @@ fn setup(
                 column_gap: px(0),
                 width: px(80 * 5),
                 height: px(80 * 3),
+                required_tags: [
+                    (Index::new(0, 0), Tag("weapon".into()))
+                ].into(),
+                //blocked_indexes: vec![
+                    //Index::new(0, 1)
+                //].into_iter().collect(),
                 ..default()
             })
         ]
@@ -183,6 +189,55 @@ fn setup(
             ..default()
         }
     ));
+
+    let data = inventories.entry_mut("eq");
+
+    // |        | helmet |  neckles |
+    // | weapon |armor   | off-hand |
+    // | ring   |        | ring     |
+    // | gloves | boots  | -        |
+    
+    commands.spawn((
+        Node {
+            align_self: AlignSelf::Start,
+            justify_self: JustifySelf::Start,
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
+            width: percent(35),
+            height: percent(50),
+            ..default()
+        },
+        children![
+            build_grid_inventory::<SecondGrid>(data, &GridInventoryConfig {
+                slot_width: px(80),
+                slot_height: px(80),
+                columns: 3, 
+                rows: 4,
+                row_gap: px(0),
+                column_gap: px(0),
+                width: px(80 * 3),
+                height: px(80 * 4),
+                required_tags: [
+                    (Index::new(1, 0), Tag("helmet".into())),
+                    (Index::new(2, 0), Tag("neckles".into())),
+                    (Index::new(0, 1), Tag("weapon".into())),
+                    (Index::new(1, 1), Tag("armor".into())),
+                    (Index::new(2, 1), Tag("off-hand".into())),
+                    (Index::new(0, 2), Tag("ring".into())),
+                    (Index::new(2, 2), Tag("ring".into())),
+                    (Index::new(0, 3), Tag("gloves".into())),
+                    (Index::new(1, 3), Tag("boots".into())),
+                ].into(),
+                blocked_indexes: vec![
+                    Index::new(0, 0),
+                    Index::new(1, 2),
+                    Index::new(2, 3),
+                ].into_iter().collect(),
+                ..default()
+            })
+        ]
+    ));
+
 }
 
 #[derive(Component)]
@@ -216,6 +271,7 @@ fn on_second_grid_slot_background_over(
     mut query: Query<&mut ImageNode>,
     assets: Res<GameAssets>,
 ) {
+    println!("in {:?}", over.entity);
     if let Ok(handle) = query_handle.get(over.entity)
         && let Ok(mut image) = query.get_mut(handle.0) {
             image.image = assets.slot_background_over.clone();
@@ -228,6 +284,7 @@ fn on_second_grid_slot_background_out(
     mut query: Query<&mut ImageNode>,
     assets: Res<GameAssets>,
 ) {
+    println!("out {:?}", out.entity);
     if let Ok(handle) = query_handle.get(out.entity)
         && let Ok(mut image) = query.get_mut(handle.0) {
             image.image = assets.slot_background.clone();
@@ -304,26 +361,35 @@ fn on_second_grid_update(
     assets: Res<GameAssets>,
     items: Res<Items>,
 ) {
-    if let Ok((image_handle, text_handle)) = query_handle.get(update.entity)
-        && let Ok(mut image) = query_image.get_mut(image_handle.0) && let Ok(mut text) = query_text.get_mut(text_handle.0) {
-            match update.item {
-                Some(item_id) => {
-                    let meta = items.get_item_meta(item_id).expect("to be there");
-                    *image = ImageNode::from_atlas_image(
-                        assets.icons.clone(),
-                        assets.texture_atlast_for_item(meta.type_name)
-                    );
-                    text.0 = match meta.max_stack_size {
-                        1 => "".to_owned(),
-                        _ => format!("{}/{}", meta.stack_size, meta.max_stack_size),
-                    };
+    let Ok((image_handle, text_handle)) = query_handle.get(update.entity) else { return };
+    let Ok(mut image) = query_image.get_mut(image_handle.0) else { return };
+    let Ok(mut text) = query_text.get_mut(text_handle.0) else { return };
 
-                },
-                None => {
-                    image.image = TRANSPARENT_IMAGE_HANDLE;
-                    text.0 = "".to_owned();
+    match update.item {
+        Some(item_id) => {
+            let meta = items.get_item_meta(item_id).expect("to be there");
+            *image = ImageNode::from_atlas_image(
+                assets.icons.clone(),
+                assets.texture_atlast_for_item(meta.type_name)
+            );
+            // if max_stack_size != 1, display max number of elements
+            text.0 = match meta.max_stack_size {
+                1 => "".to_owned(),
+                _ => format!("{}/{}", meta.stack_size, meta.max_stack_size),
+            };
+
+        },
+        None => {
+            image.image = TRANSPARENT_IMAGE_HANDLE;
+            // if there's no item, maybe write a placeholder spot
+            text.0 = match update.required_tag {
+                None => "".to_owned(),
+                Some(Tag(ref tag)) => {
+                    println!("tagging: {}", tag);
+                    format!("[{}]", tag)
                 }
             }
         }
+    }
 }
 

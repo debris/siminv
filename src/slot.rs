@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::{event::*, item::{ItemId, Items, Tag}};
 
-#[derive(Component, Default)]
+#[derive(Component, Default, Debug)]
 pub struct Slot {
     pub item: Option<ItemId>,
     pub required_tag: Option<Tag>,
@@ -52,21 +52,27 @@ pub(crate) fn on_add(
 }
 
 pub(crate) fn on_pointer_over(
-    over: On<Pointer<Over>>,
+    mut over: On<Pointer<Over>>,
     mut commands: Commands,
     query: Query<&Slot>,
 ) {
     if query.get(over.entity).is_ok() {
+        // do not propagate to slot background
+        // it has its own observer
+        over.propagate(false);
         commands.trigger_slot_event(SlotEvent::new(over.entity, SlotOver));
     }
 }
 
 pub(crate) fn on_pointer_out(
-    out: On<Pointer<Out>>,
+    mut out: On<Pointer<Out>>,
     mut commands: Commands,
     query: Query<&Slot>,
 ) {
     if query.get(out.entity).is_ok() {
+        // do not propagate to slot background
+        // it has its own observer
+        out.propagate(false);
         commands.trigger_slot_event(SlotEvent::new(out.entity, SlotOut));
     }
 }
@@ -161,6 +167,7 @@ pub(crate) fn update_slot(
     for (entity, slot) in query {
         commands.trigger_slot_event(SlotEvent::new(entity, SlotUpdate {
             item: slot.item,
+            required_tag: slot.required_tag.clone(),
         }));
     };
 }
