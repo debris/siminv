@@ -16,5 +16,23 @@
         display_name: "Stones",
         max_stack_size: 20,
         tags: []
+    ),
+    (
+        type_name: "shield",
+        display_name: "Shield",
+        max_stack_size: 1,
+        tags: [Tag("shield"), Tag("off-hand")]
+    ),
+    (
+        type_name: "helmet",
+        display_name: "Helmet",
+        max_stack_size: 1,
+        tags: [Tag("helmet")]
+    ),
+    (
+        type_name: "armor",
+        display_name: "Armor",
+        max_stack_size: 1,
+        tags: [Tag("armor")]
     )
 ]

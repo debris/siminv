@@ -45,7 +45,10 @@ impl GameAssets {
     fn texture_atlast_for_item(&self, item: &str) -> TextureAtlas {
         let index = match item {
             "sword" => 56,
+            "shield" => 67,
             "bow" => 69,
+            "helmet" => 78,
+            "armor" => 84,
             "stones" => 188,
             // empty spot
             _ => {
@@ -121,6 +124,9 @@ fn setup(
         items.register_item_type(item_type);
     }
 
+    let shield = items.add_item("shield");
+    let helmet = items.add_item("helmet");
+    let armor = items.add_item("armor");
     let sword_a = items.add_item("sword");
     let sword_b = items.add_item("sword");
     let bow = items.add_item("bow");
@@ -129,7 +135,10 @@ fn setup(
     let stones_c = items.add_items("stones", 17);
 
     let data = inventories.entry_mut("main");
-    data.set(Index::new(0, 2), sword_a);
+    data.set(Index::new(0, 0), shield);
+    data.set(Index::new(0, 1), helmet);
+    data.set(Index::new(0, 2), armor);
+    data.set(Index::new(0, 3), sword_a);
     data.set(Index::new(1, 2), sword_b);
     data.set(Index::new(2, 2), bow);
     data.set(Index::new(3, 0), stones_a);
