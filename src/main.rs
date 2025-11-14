@@ -1,4 +1,4 @@
-use bevy::{asset::ron, ecs::{entity, query}, image::TRANSPARENT_IMAGE_HANDLE, prelude::*};
+use bevy::{asset::ron, image::TRANSPARENT_IMAGE_HANDLE, prelude::*};
 use plugin::ArmouryPlugin;
 use slot::Slot;
 use event::*;
@@ -216,11 +216,10 @@ fn on_second_grid_slot_background_over(
     mut query: Query<&mut ImageNode>,
     assets: Res<GameAssets>,
 ) {
-    if let Ok(handle) = query_handle.get(over.entity) {
-        if let Ok(mut image) = query.get_mut(handle.0) {
+    if let Ok(handle) = query_handle.get(over.entity)
+        && let Ok(mut image) = query.get_mut(handle.0) {
             image.image = assets.slot_background_over.clone();
         }
-    }
 }
 
 fn on_second_grid_slot_background_out(
@@ -229,11 +228,10 @@ fn on_second_grid_slot_background_out(
     mut query: Query<&mut ImageNode>,
     assets: Res<GameAssets>,
 ) {
-    if let Ok(handle) = query_handle.get(out.entity) {
-        if let Ok(mut image) = query.get_mut(handle.0) {
+    if let Ok(handle) = query_handle.get(out.entity)
+        && let Ok(mut image) = query.get_mut(handle.0) {
             image.image = assets.slot_background.clone();
         }
-    }
 }
 
 fn on_big_weapon_slot_update(
@@ -306,8 +304,8 @@ fn on_second_grid_update(
     assets: Res<GameAssets>,
     items: Res<Items>,
 ) {
-    if let Ok((image_handle, text_handle)) = query_handle.get(update.entity) {
-        if let Ok(mut image) = query_image.get_mut(image_handle.0) && let Ok(mut text) = query_text.get_mut(text_handle.0) {
+    if let Ok((image_handle, text_handle)) = query_handle.get(update.entity)
+        && let Ok(mut image) = query_image.get_mut(image_handle.0) && let Ok(mut text) = query_text.get_mut(text_handle.0) {
             match update.item {
                 Some(item_id) => {
                     let meta = items.get_item_meta(item_id).expect("to be there");
@@ -327,6 +325,5 @@ fn on_second_grid_update(
                 }
             }
         }
-    }
 }
 

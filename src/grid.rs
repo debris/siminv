@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use crate::{event::{SlotEvent, TriggerSlotEvent}, inventory::{Index, InventoryData}, slot::Slot, slot_background::SlotBackground};
+use crate::{inventory::{Index, InventoryData}, slot::Slot, slot_background::SlotBackground};
 
 pub struct GridInventoryConfig {
     pub columns: usize,

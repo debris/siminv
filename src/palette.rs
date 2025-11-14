@@ -5,7 +5,7 @@
 //!
 //! https://lospec.com/palette-list/shmupy-16
 
-use bevy::{color::Color, gizmos::light};
+use bevy::color::Color;
 
 #[derive(Debug)]
 pub struct ColorPair {
