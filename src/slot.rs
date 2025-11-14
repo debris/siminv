@@ -1,12 +1,15 @@
 use bevy::prelude::*;
 
-use crate::{event::*, item::{ItemId, Items, Tag}};
+use crate::{event::*, item::{ItemId, Items, Tag}, slot_background::SlotBackground};
 
 #[derive(Component, Default, Debug)]
 pub struct Slot {
     pub item: Option<ItemId>,
     pub required_tag: Option<Tag>,
 }
+
+#[derive(Component)]
+pub struct SlotHandle(pub Entity);
 
 impl Slot {
     pub fn empty() -> Self {
@@ -35,9 +38,13 @@ impl Slot {
     }
 }
 
+#[derive(Resource, Default)]
+pub struct Dragged(pub Option<ItemId>);
+
 pub(crate) fn on_add(
     added: On<Add, Slot>,
     mut commands: Commands,
+    query: Query<&ChildOf>
 ) {
     commands.entity(added.entity)
         .try_insert((
@@ -49,6 +56,13 @@ pub(crate) fn on_add(
         ));
 
     commands.trigger_slot_event(SlotEvent::new(added.entity, SlotAdd));
+
+    let Ok(parent) = query.get(added.entity).map(|x| x.parent()) else { return };
+
+    // it should insert the handle into the background
+    // not sure if that's the best solution, but lets keep it for now
+    commands.entity(parent)
+        .try_insert(SlotHandle(added.entity));
 }
 
 pub(crate) fn on_pointer_over(
@@ -80,12 +94,14 @@ pub(crate) fn on_pointer_out(
 pub(crate) fn on_pointer_drag_start(
     on_drag_start: On<Pointer<DragStart>>,
     mut query: Query<(&Slot, &mut GlobalZIndex), With<Slot>>,
+    mut commands: Commands,
 ) {
     if let Ok((slot, mut z_index)) = query.get_mut(on_drag_start.event_target()) {
         // we can only drag items that have something inside
         if slot.item.is_some() {
             // we are draggin it. it should always be on the top
             z_index.0 = 1000;
+            commands.insert_resource(Dragged(slot.item));
         }
     }
 }
@@ -105,10 +121,12 @@ pub(crate) fn on_pointer_drag(
 pub(crate) fn on_pointer_drag_end(
     on_drag_end: On<Pointer<DragEnd>>,
     mut query: Query<(&mut UiTransform, &mut GlobalZIndex), With<Slot>>,
+    mut commands: Commands,
 ) {
     if let Ok((mut transform, mut z_index)) = query.get_mut(on_drag_end.event_target()) {
         transform.translation = Val2::ZERO;
         z_index.0 = 0;
+        commands.insert_resource(Dragged(None));
     }
 }
 

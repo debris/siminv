@@ -9,6 +9,7 @@ impl Plugin for ArmouryPlugin {
         app
             .init_resource::<Items>()
             .init_resource::<Inventories>()
+            .init_resource::<slot::Dragged>()
             .add_observer(slot::on_add)
             .add_observer(slot::on_pointer_over)
             .add_observer(slot::on_pointer_out)

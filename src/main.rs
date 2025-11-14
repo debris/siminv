@@ -1,6 +1,6 @@
 use bevy::{asset::ron, image::TRANSPARENT_IMAGE_HANDLE, prelude::*};
 use plugin::ArmouryPlugin;
-use slot::Slot;
+use slot::{Dragged, Slot, SlotHandle};
 use event::*;
 use inventory::{Inventories, Index};
 use item::{ItemType, Items, Tag};
@@ -31,6 +31,8 @@ struct GameAssets {
     slot_background: Handle<Image>,
     #[asset(path = "images/slot_bg_over.png")]
     slot_background_over: Handle<Image>,
+    #[asset(path = "images/slot_bg_error.png")]
+    slot_background_error: Handle<Image>,
 
     #[asset(texture_atlas_layout(tile_size_x = 32, tile_size_y = 32, columns = 11, rows = 22))]
     icons_atlas: Handle<TextureAtlasLayout>,
@@ -160,17 +162,11 @@ fn setup(
                 slot_width: px(80),
                 slot_height: px(80),
                 columns: 5, 
-                rows: 3,
+                rows: 4,
                 row_gap: px(0),
                 column_gap: px(0),
                 width: px(80 * 5),
-                height: px(80 * 3),
-                required_tags: [
-                    (Index::new(0, 0), Tag("weapon".into()))
-                ].into(),
-                //blocked_indexes: vec![
-                    //Index::new(0, 1)
-                //].into_iter().collect(),
+                height: px(80 * 4),
                 ..default()
             })
         ]
@@ -267,15 +263,33 @@ fn on_second_grid_slot_background_add(
 
 fn on_second_grid_slot_background_over(
     over: On<SlotEvent<SlotBackgroundOver>, SecondGrid>,
-    query_handle: Query<&SlotBackgroundImageHandle>,
-    mut query: Query<&mut ImageNode>,
+    query_handle: Query<(&SlotBackgroundImageHandle, &SlotHandle)>,
+    mut query_image: Query<&mut ImageNode>,
+    query_slot: Query<&Slot>,
     assets: Res<GameAssets>,
+    items: Res<Items>,
+    dragged: Res<Dragged>,
 ) {
-    println!("in {:?}", over.entity);
-    if let Ok(handle) = query_handle.get(over.entity)
-        && let Ok(mut image) = query.get_mut(handle.0) {
+    let Ok((image_handle, slot_handle)) = query_handle.get(over.entity) else { return };
+    let Ok(mut image) = query_image.get_mut(image_handle.0) else { return };
+    match dragged.0 {
+        None => {
+            // nothing is dragged
             image.image = assets.slot_background_over.clone();
-        }
+        },
+        Some(item) => {
+            let Some(item) = items.get_item_meta(item) else { return };
+            // TODO: throw error? crash? 
+            let Ok(slot) = query_slot.get(slot_handle.0) else { return };
+
+            if slot.matching_tag(item.tags) {
+                image.image = assets.slot_background_over.clone();
+            } else {
+                // tags are not matching
+                image.image = assets.slot_background_error.clone();
+            }
+        },
+    }
 }
 
 fn on_second_grid_slot_background_out(
@@ -284,11 +298,9 @@ fn on_second_grid_slot_background_out(
     mut query: Query<&mut ImageNode>,
     assets: Res<GameAssets>,
 ) {
-    println!("out {:?}", out.entity);
-    if let Ok(handle) = query_handle.get(out.entity)
-        && let Ok(mut image) = query.get_mut(handle.0) {
-            image.image = assets.slot_background.clone();
-        }
+    let Ok(handle) = query_handle.get(out.entity) else { return };
+    let Ok(mut image) = query.get_mut(handle.0) else { return };
+    image.image = assets.slot_background.clone();
 }
 
 fn on_big_weapon_slot_update(
