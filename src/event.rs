@@ -50,6 +50,9 @@ pub struct SlotBackgroundOver;
 #[derive(Debug)]
 pub struct SlotBackgroundOut;
 
+#[derive(Debug)]
+pub struct SlotDoubleClick;
+
 pub(crate) trait TriggerSlotEvent {
     fn trigger_slot_event<E: Send + Sync + 'static>(&mut self, event: SlotEvent<E>);
 }

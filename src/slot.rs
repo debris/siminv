@@ -30,6 +30,10 @@ impl Slot {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.item.is_none()
+    }
+
     pub fn matching_tag(&self, tags: &[Tag]) -> bool {
         match self.required_tag {
             None => true,

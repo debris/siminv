@@ -1,4 +1,6 @@
+use auto_move::auto_move;
 use bevy::{asset::ron, image::TRANSPARENT_IMAGE_HANDLE, prelude::*};
+use double_click::DoubleClick;
 use plugin::ArmouryPlugin;
 use slot::{Dragged, Slot, SlotHandle};
 use event::*;
@@ -7,6 +9,7 @@ use item::{ItemType, Items, Tag};
 use grid::{GridInventoryConfig, build_grid_inventory};
 use bevy_asset_loader::prelude::*;
 
+mod auto_move;
 mod double_click;
 mod inventory;
 mod slot;
@@ -75,33 +78,30 @@ fn main() {
 
         .add_plugins(ArmouryPlugin)
         
-        .add_observer(on_second_grid_slot_background_add)
-        .add_observer(on_second_grid_slot_background_over)
-        .add_observer(on_second_grid_slot_background_out)
+        .add_observer(on_background_add)
+        .add_observer(on_background_over)
+        .add_observer(on_background_out)
 
-        .add_observer(on_big_weapon_slot_update)
+        .add_observer(on_slot_add)
+        .add_observer(on_slot_update)
 
-        .add_observer(on_second_grid_add)
-        .add_observer(on_second_grid_update)
+        .add_observer(auto_move::<SlotDoubleClick, Backpack, Equipment>)
+        .add_observer(auto_move::<SlotDoubleClick, Equipment, Backpack>)
 
         .add_systems(OnEnter(GameState::Next), setup)
         .run();
 }
 
 #[derive(Component, Default)]
-struct MainGrid;
+struct Equipment;
 
 #[derive(Component, Default)]
-struct SecondGrid;
-
-#[derive(Component)]
-struct BigWeaponSlot;
+struct Backpack;
 
 fn setup(
     mut commands: Commands,
     mut items: ResMut<Items>,
     mut inventories: ResMut<Inventories>,
-    assets: Res<GameAssets>,
 ) {
 
     let projection = OrthographicProjection {
@@ -167,7 +167,7 @@ fn setup(
             ..default()
         },
         children![
-            build_grid_inventory::<SecondGrid>(data, &GridInventoryConfig {
+            build_grid_inventory::<Backpack>(data, &GridInventoryConfig {
                 slot_width: px(80),
                 slot_height: px(80),
                 columns: 5, 
@@ -179,20 +179,6 @@ fn setup(
                 ..default()
             })
         ]
-    ));
-
-    commands.spawn((
-        Slot::with_required_tag(Tag("weapon".into())),
-        BigWeaponSlot,
-        Node {
-            align_self: AlignSelf::Start,
-            justify_self: JustifySelf::End,
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Center,
-            width: percent(50),
-            height: percent(50),
-            ..default()
-        }
     ));
 
     let data = inventories.entry_mut("eq");
@@ -213,7 +199,7 @@ fn setup(
             ..default()
         },
         children![
-            build_grid_inventory::<SecondGrid>(data, &GridInventoryConfig {
+            build_grid_inventory::<Equipment>(data, &GridInventoryConfig {
                 slot_width: px(80),
                 slot_height: px(80),
                 columns: 3, 
@@ -248,8 +234,8 @@ fn setup(
 #[derive(Component)]
 struct SlotBackgroundImageHandle(Entity);
 
-fn on_second_grid_slot_background_add(
-    add: On<SlotEvent<SlotBackgroundAdd>, SecondGrid>,
+fn on_background_add(
+    add: On<SlotEvent<SlotBackgroundAdd>>,
     mut commands: Commands,
     assets: Res<GameAssets>,
 ) {
@@ -270,8 +256,8 @@ fn on_second_grid_slot_background_add(
         .add_child(id);
 }
 
-fn on_second_grid_slot_background_over(
-    over: On<SlotEvent<SlotBackgroundOver>, SecondGrid>,
+fn on_background_over(
+    over: On<SlotEvent<SlotBackgroundOver>>,
     query_handle: Query<(&SlotBackgroundImageHandle, &SlotHandle)>,
     mut query_image: Query<&mut ImageNode>,
     query_slot: Query<&Slot>,
@@ -301,8 +287,8 @@ fn on_second_grid_slot_background_over(
     }
 }
 
-fn on_second_grid_slot_background_out(
-    out: On<SlotEvent<SlotBackgroundOut>, SecondGrid>,
+fn on_background_out(
+    out: On<SlotEvent<SlotBackgroundOut>>,
     query_handle: Query<&SlotBackgroundImageHandle>,
     mut query: Query<&mut ImageNode>,
     assets: Res<GameAssets>,
@@ -312,33 +298,14 @@ fn on_second_grid_slot_background_out(
     image.image = assets.slot_background.clone();
 }
 
-fn on_big_weapon_slot_update(
-    update: On<SlotEvent<SlotUpdate>, BigWeaponSlot>,
-    mut commands: Commands,
-    items: Res<Items>,
-) {
-    let display_text = match update.item {
-        Some(item_id) => items.get_item_meta(item_id)
-            .map(|item| item.display_name).expect("to be there"),
-        None => "[weapon slot]",
-    };
-
-    commands.entity(update.entity)
-        .despawn_children()
-        .with_child((
-            Text::new(display_text),
-            Pickable::IGNORE,
-        ));
-}
-
 #[derive(Component)]
 struct SlotItemImageHandle(Entity);
 
 #[derive(Component)]
 struct SlotTextHandle(Entity);
 
-fn on_second_grid_add(
-    add: On<SlotEvent<SlotAdd>, SecondGrid>,
+fn on_slot_add(
+    add: On<SlotEvent<SlotAdd>>,
     mut commands: Commands,
 ) {
     let image_id = commands.spawn((
@@ -374,8 +341,8 @@ fn on_second_grid_add(
         .add_children(&[image_id, text_id]);
 }
 
-fn on_second_grid_update(
-    update: On<SlotEvent<SlotUpdate>, SecondGrid>,
+fn on_slot_update(
+    update: On<SlotEvent<SlotUpdate>>,
     query_handle: Query<(&SlotItemImageHandle, &SlotTextHandle)>,
     mut query_image: Query<&mut ImageNode>,
     mut query_text: Query<&mut Text>,
