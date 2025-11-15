@@ -2,9 +2,9 @@ use bevy::prelude::*;
 
 use crate::{double_click, inventory::Inventories, item::Items, shift_click, slot, slot_background};
 
-pub struct ArmouryPlugin;
+pub struct SiminvPlugin;
 
-impl Plugin for ArmouryPlugin {
+impl Plugin for SiminvPlugin {
     fn build(&self, app: &mut App) {
         app
             .init_resource::<Items>()

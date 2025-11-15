@@ -1,8 +1,7 @@
 use auto_move::{MovePolicy, on_event_move_to};
-use bevy::{asset::ron, image::TRANSPARENT_IMAGE_HANDLE, prelude::*};
-use double_click::DoubleClick;
-use plugin::ArmouryPlugin;
-use slot::{Dragged, Slot, SlotHandle};
+use bevy::{asset::ron, prelude::*};
+use plugin::SiminvPlugin;
+use simple_renderer::{SiminvSimpleRendererPlugin, SimpleImageHandle, SimpleRendererAssets};
 use event::*;
 use inventory::{Inventories, Index};
 use item::{ItemType, Items, Tag};
@@ -21,6 +20,7 @@ mod plugin;
 mod event;
 mod palette;
 mod tint;
+mod simple_renderer;
 
 #[derive(Clone, Eq, PartialEq, Debug, Hash, Default, States)]
 enum GameState {
@@ -66,8 +66,26 @@ impl GameAssets {
     }
 }
 
-fn main() {
+impl SimpleRendererAssets for GameAssets {
+    fn background(&self) -> SimpleImageHandle {
+        SimpleImageHandle::Direct(self.slot_background.clone())
+    }
 
+    fn background_over(&self) -> SimpleImageHandle {
+        SimpleImageHandle::Direct(self.slot_background_over.clone())
+        
+    }
+
+    fn background_error(&self) -> SimpleImageHandle {
+        SimpleImageHandle::Direct(self.slot_background_error.clone())
+    }
+
+    fn item(&self, item: &str) -> SimpleImageHandle {
+        SimpleImageHandle::AtlasImage(self.icons.clone(), self.texture_atlast_for_item(item))
+    }
+}
+
+fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .init_state::<GameState>()
@@ -77,15 +95,9 @@ fn main() {
                 .continue_to_state(GameState::Next)
         )
 
-        .add_plugins(ArmouryPlugin)
+        .add_plugins(SiminvPlugin)
+        .add_plugins(SiminvSimpleRendererPlugin::<GameAssets, FantasyStyle>::default())
         
-        .add_observer(on_background_add)
-        .add_observer(on_background_over)
-        .add_observer(on_background_out)
-
-        .add_observer(on_slot_add)
-        .add_observer(on_slot_update)
-
         // backpack
         .add_observer(on_event_move_to::<SlotDoubleClick, Backpack, Equipment, { MovePolicy::EMPTY_OR_REPLACE }>)
         .add_observer(on_event_move_to::<SlotShiftClick, Backpack, Stash, { MovePolicy::ONLY_EMPTY }>)
@@ -101,6 +113,9 @@ fn main() {
         .add_systems(OnEnter(GameState::Next), setup)
         .run();
 }
+
+#[derive(Component, Default)]
+struct FantasyStyle;
 
 #[derive(Component, Default)]
 struct Equipment;
@@ -180,7 +195,7 @@ fn setup(
             ..default()
         },
         children![
-            build_grid_inventory::<Backpack>(data, &GridInventoryConfig {
+            build_grid_inventory::<(FantasyStyle, Backpack)>(data, &GridInventoryConfig {
                 slot_width: px(80),
                 slot_height: px(80),
                 columns: 5, 
@@ -212,7 +227,7 @@ fn setup(
             ..default()
         },
         children![
-            build_grid_inventory::<Equipment>(data, &GridInventoryConfig {
+            build_grid_inventory::<(FantasyStyle, Equipment)>(data, &GridInventoryConfig {
                 slot_width: px(80),
                 slot_height: px(80),
                 columns: 3, 
@@ -256,7 +271,7 @@ fn setup(
             ..default()
         },
         children![
-            build_grid_inventory::<Stash>(data, &GridInventoryConfig {
+            build_grid_inventory::<(FantasyStyle, Stash)>(data, &GridInventoryConfig {
                 slot_width: px(80),
                 slot_height: px(80),
                 columns: 5, 
@@ -269,156 +284,5 @@ fn setup(
             })
         ]
     ));
-
-}
-
-#[derive(Component)]
-struct SlotBackgroundImageHandle(Entity);
-
-fn on_background_add(
-    add: On<SlotEvent<SlotBackgroundAdd>>,
-    mut commands: Commands,
-    assets: Res<GameAssets>,
-) {
-    let image = ImageNode::new(assets.slot_background.clone());
-
-    let id = commands.spawn((
-        image,
-        Node {
-            position_type: PositionType::Absolute,
-            width: percent(100),
-            height: percent(100),
-            ..default()
-        }
-    )).id();
-
-    commands.entity(add.entity)
-        .try_insert(SlotBackgroundImageHandle(id))
-        .add_child(id);
-}
-
-fn on_background_over(
-    over: On<SlotEvent<SlotBackgroundOver>>,
-    query_handle: Query<(&SlotBackgroundImageHandle, &SlotHandle)>,
-    mut query_image: Query<&mut ImageNode>,
-    query_slot: Query<&Slot>,
-    assets: Res<GameAssets>,
-    items: Res<Items>,
-    dragged: Res<Dragged>,
-) {
-    let Ok((image_handle, slot_handle)) = query_handle.get(over.entity) else { return };
-    let Ok(mut image) = query_image.get_mut(image_handle.0) else { return };
-    match dragged.0 {
-        None => {
-            // nothing is dragged
-            image.image = assets.slot_background_over.clone();
-        },
-        Some(item) => {
-            let Some(item) = items.get_item_meta(item) else { return };
-            // TODO: throw error? crash? 
-            let Ok(slot) = query_slot.get(slot_handle.0) else { return };
-
-            if slot.matching_tag(item.tags) {
-                image.image = assets.slot_background_over.clone();
-            } else {
-                // tags are not matching
-                image.image = assets.slot_background_error.clone();
-            }
-        },
-    }
-}
-
-fn on_background_out(
-    out: On<SlotEvent<SlotBackgroundOut>>,
-    query_handle: Query<&SlotBackgroundImageHandle>,
-    mut query: Query<&mut ImageNode>,
-    assets: Res<GameAssets>,
-) {
-    let Ok(handle) = query_handle.get(out.entity) else { return };
-    let Ok(mut image) = query.get_mut(handle.0) else { return };
-    image.image = assets.slot_background.clone();
-}
-
-#[derive(Component)]
-struct SlotItemImageHandle(Entity);
-
-#[derive(Component)]
-struct SlotTextHandle(Entity);
-
-fn on_slot_add(
-    add: On<SlotEvent<SlotAdd>>,
-    mut commands: Commands,
-) {
-    let image_id = commands.spawn((
-        ImageNode::default(),
-        Node {
-            position_type: PositionType::Absolute,
-            width: px(48),
-            height: px(48),
-            ..default()
-        },
-        Pickable::IGNORE,
-    )).id();
-
-    let text_id = commands.spawn((
-        Text::default(),
-        TextFont {
-            font_size: 12.,
-            ..default()
-        },
-        Node {
-            align_self: AlignSelf::End,
-            padding: UiRect::bottom(px(6)),
-            ..default()
-        },
-        Pickable::IGNORE,
-    )).id();
-
-    commands.entity(add.entity)
-        .try_insert((
-            SlotItemImageHandle(image_id),
-            SlotTextHandle(text_id),
-        ))
-        .add_children(&[image_id, text_id]);
-}
-
-fn on_slot_update(
-    update: On<SlotEvent<SlotUpdate>>,
-    query_handle: Query<(&SlotItemImageHandle, &SlotTextHandle)>,
-    mut query_image: Query<&mut ImageNode>,
-    mut query_text: Query<&mut Text>,
-    assets: Res<GameAssets>,
-    items: Res<Items>,
-) {
-    let Ok((image_handle, text_handle)) = query_handle.get(update.entity) else { return };
-    let Ok(mut image) = query_image.get_mut(image_handle.0) else { return };
-    let Ok(mut text) = query_text.get_mut(text_handle.0) else { return };
-
-    match update.item {
-        Some(item_id) => {
-            let meta = items.get_item_meta(item_id).expect("to be there");
-            *image = ImageNode::from_atlas_image(
-                assets.icons.clone(),
-                assets.texture_atlast_for_item(meta.type_name)
-            );
-            // if max_stack_size != 1, display max number of elements
-            text.0 = match meta.max_stack_size {
-                1 => "".to_owned(),
-                _ => format!("{}/{}", meta.stack_size, meta.max_stack_size),
-            };
-
-        },
-        None => {
-            image.image = TRANSPARENT_IMAGE_HANDLE;
-            // if there's no item, maybe write a placeholder spot
-            text.0 = match update.required_tag {
-                None => "".to_owned(),
-                Some(Tag(ref tag)) => {
-                    println!("tagging: {}", tag);
-                    format!("[{}]", tag)
-                }
-            }
-        }
-    }
 }
 

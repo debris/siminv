@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::event::*;
 
 #[derive(Component)]
-pub(crate) struct SlotBackground;
+pub struct SlotBackground;
 
 pub(crate) fn on_add(
     added: On<Add, SlotBackground> ,

@@ -39,7 +39,7 @@ impl Default for GridInventoryConfig {
     }
 }
 
-pub fn build_grid_inventory<T: Component + Default>(
+pub fn build_grid_inventory<T: Bundle + Default>(
     data: &InventoryData,
     config: &GridInventoryConfig,
 ) -> impl Bundle {
@@ -82,7 +82,7 @@ pub fn build_grid_inventory<T: Component + Default>(
 }
 
 
-pub fn build_slot_with_background<T: Component + Default>(size: Val2, slot: Slot, index: Index) -> impl Bundle {
+pub fn build_slot_with_background<T: Bundle + Default>(size: Val2, slot: Slot, index: Index) -> impl Bundle {
     (
         // a wrapper to position a slot in the center of the grid cell
         // we need it so when the user grabs a cell, there is something underneath
