@@ -44,7 +44,6 @@ impl<T, S> Default for SiminvSimpleRendererPlugin<T, S> {
 
 impl<T, S> Plugin for SiminvSimpleRendererPlugin<T, S> where T: SimpleRendererAssets, S: Component {
     fn build(&self, app: &mut App) {
-        println!("siming ren");
         app
             .add_observer(on_background_add::<T, S>)
             .add_observer(on_background_over::<T, S>)
@@ -63,7 +62,6 @@ fn on_background_add<T: SimpleRendererAssets, S: Component>(
     mut commands: Commands,
     assets: Res<T>,
 ) {
-    println!("bg add");
     let image: ImageNode = assets.background().into();
 
     let id = commands.spawn((
@@ -90,7 +88,6 @@ fn on_background_over<T: SimpleRendererAssets, S: Component>(
     items: Res<Items>,
     dragged: Res<Dragged>,
 ) {
-    println!("bg over");
     let Ok((image_handle, slot_handle)) = query_handle.get(over.entity) else { return };
     let Ok(mut image) = query_image.get_mut(image_handle.0) else { return };
     match dragged.0 {
@@ -169,17 +166,17 @@ fn on_slot_add<S: Component>(
 
 fn on_slot_update<T: SimpleRendererAssets, S: Component>(
     update: On<SlotEvent<SlotUpdate>, S>,
-    query_handle: Query<(&SlotItemImageHandle, &SlotTextHandle)>,
+    query_handle: Query<(&Slot, &SlotItemImageHandle, &SlotTextHandle)>,
     mut query_image: Query<&mut ImageNode>,
     mut query_text: Query<&mut Text>,
     assets: Res<T>,
     items: Res<Items>,
 ) {
-    let Ok((image_handle, text_handle)) = query_handle.get(update.entity) else { return };
+    let Ok((slot, image_handle, text_handle)) = query_handle.get(update.entity) else { return };
     let Ok(mut image) = query_image.get_mut(image_handle.0) else { return };
     let Ok(mut text) = query_text.get_mut(text_handle.0) else { return };
 
-    match update.item {
+    match slot.item {
         Some(item_id) => {
             let meta = items.get_item_meta(item_id).expect("to be there");
             *image = assets.item(meta.type_name).into();
@@ -194,10 +191,9 @@ fn on_slot_update<T: SimpleRendererAssets, S: Component>(
         None => {
             image.image = TRANSPARENT_IMAGE_HANDLE;
             // if there's no item, maybe write a placeholder spot
-            text.0 = match update.required_tag {
+            text.0 = match slot.required_tag {
                 None => "".to_owned(),
                 Some(Tag(ref tag)) => {
-                    println!("tagging: {}", tag);
                     format!("[{}]", tag)
                 }
             }

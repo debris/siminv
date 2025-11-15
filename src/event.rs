@@ -36,10 +36,7 @@ pub struct SlotOver;
 pub struct SlotOut;
 
 #[derive(Debug)]
-pub struct SlotUpdate {
-    pub item: Option<ItemId>,
-    pub required_tag: Option<Tag>,
-}
+pub struct SlotUpdate;
 
 #[derive(Debug)]
 pub struct SlotBackgroundAdd;

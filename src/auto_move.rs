@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{event::SlotEvent, inventory::Index, item::Items, slot::Slot};
+use crate::{event::{SlotEvent, SlotUpdate, TriggerSlotEvent}, inventory::Index, item::Items, slot::Slot};
 
 pub struct MovePolicy;
 
@@ -15,8 +15,9 @@ impl MovePolicy {
 // on_event_move_from_to
 pub fn on_event_move_to<E: Send + Sync + 'static, F: Component, T: Component, const R: u8> (
     event: On<SlotEvent<E>, F>,
+    mut commands: Commands,
     mut query_from: Query<&mut Slot, Without<T>>,
-    query_into: Query<(&mut Slot, Option<&Index>), With<T>>,
+    query_into: Query<(Entity, &mut Slot, Option<&Index>), With<T>>,
     items: Res<Items>,
 ) {
     // slot that triggered the event
@@ -33,7 +34,7 @@ pub fn on_event_move_to<E: Send + Sync + 'static, F: Component, T: Component, co
     let mut ordered_into_slots = query_into
         .into_iter()
         // sort the slots, so we start filling rows, one after another
-        .sort_by::<(&Slot, Option<&Index>)>(|(_, index_a), (_, index_b)| {
+        .sort_by::<(Entity, &Slot, Option<&Index>)>(|(_, _, index_a), (_, _, index_b)| {
             // fill items outside of the grid first
             let Some(a) = index_a else { return core::cmp::Ordering::Less };
             let Some(b) = index_b else { return core::cmp::Ordering::Greater };
@@ -44,31 +45,35 @@ pub fn on_event_move_to<E: Send + Sync + 'static, F: Component, T: Component, co
                 a.y.cmp(&b.y)
             }
         })
-        .map(|(slot, _)| slot)
+        .map(|(e, slot, _)| (e, slot))
         .collect::<Vec<_>>();
 
     let empty_into_slot = ordered_into_slots
         .iter_mut()
-        .find(|slot| {
+        .find(|(_, slot)| {
             slot.is_empty() && slot.matching_tag(from_item.tags) 
         });
 
     match empty_into_slot {
-        Some(into_slot) => {
+        Some((into_entity, into_slot)) => {
             // TODO: use more sophisticated methods, like merge && swap 
             core::mem::swap(&mut from_slot.item, &mut into_slot.item);
+            commands.trigger_slot_event(SlotEvent::new(event.entity, SlotUpdate));
+            commands.trigger_slot_event(SlotEvent::new(*into_entity, SlotUpdate));
         },
         None => {
             // if there are no empty slots matching the tag, maybe replace the existing slot?
             if R == MovePolicy::EMPTY_OR_REPLACE {
-                let Some(into_slot) = ordered_into_slots
+                let Some((into_entity, into_slot)) = ordered_into_slots
                     .iter_mut()
-                    .find(|slot| slot.matching_tag(from_item.tags))
+                    .find(|(_, slot)| slot.matching_tag(from_item.tags))
                     // if there are no matching slots, just return
                     else {
                         return
                     };
                 core::mem::swap(&mut from_slot.item, &mut into_slot.item);
+                commands.trigger_slot_event(SlotEvent::new(event.entity, SlotUpdate));
+                commands.trigger_slot_event(SlotEvent::new(*into_entity, SlotUpdate));
             }
         },
     }

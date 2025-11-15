@@ -1,5 +1,6 @@
 use auto_move::{MovePolicy, on_event_move_to};
 use bevy::{asset::ron, prelude::*};
+use bevy_pkv::{PersistentResourceAppExtensions, PkvStore};
 use plugin::SiminvPlugin;
 use simple_renderer::{SiminvSimpleRendererPlugin, SimpleImageHandle, SimpleRendererAssets};
 use event::*;
@@ -73,7 +74,6 @@ impl SimpleRendererAssets for GameAssets {
 
     fn background_over(&self) -> SimpleImageHandle {
         SimpleImageHandle::Direct(self.slot_background_over.clone())
-        
     }
 
     fn background_error(&self) -> SimpleImageHandle {
@@ -85,7 +85,64 @@ impl SimpleRendererAssets for GameAssets {
     }
 }
 
+fn add_to_inventory(
+    items: &mut Items,
+    inventories: &mut Inventories,
+    name: &str, 
+    data: impl IntoIterator<Item = ((u32, u32), &'static str)> 
+) {
+    for (index, item_query) in data {
+        let item: Vec<_> = item_query.split(":").collect();
+        if item.len() == 1 {
+            let item_name = item[0];
+            let item_id = items.add_item(item_name);
+            inventories.entry_mut(name).set(index.into(), item_id);
+        } else if item.len() == 2 {
+            let item_name = item[0];
+            let count = item[1].parse::<u64>().expect("ok");
+            let item_id = items.add_items(item_name, count);
+            inventories.entry_mut(name).set(index.into(), item_id);
+        }
+    }
+}
+
+// load defaults here, cause they depend on each other
+// TODO: make make them not depend on each other
+fn default_resources() -> (Items, Inventories) {
+    const ITEMS_RON: &str = include_str!("../assets/data/item_types.ron");
+    let item_types: Vec<ItemType> = ron::from_str(ITEMS_RON).expect("Failed to parse item_types.ron");
+    let mut items = Items::default();
+    items.register_item_types(item_types);
+
+    let mut inventories = Inventories::default();
+
+    let _ = inventories.entry_mut("backpack");
+    let _ = inventories.entry_mut("eq");
+    let _ = inventories.entry_mut("stash");
+    // TODO: initialize with it?
+    add_to_inventory(
+        &mut items, 
+        &mut inventories, 
+        "backpack",
+        vec![
+            ((0, 0), "shield"),
+            ((0, 1), "helmet"),
+            ((0, 2), "armor"),
+            ((0, 3), "sword"),
+            ((1, 2), "sword"),
+            ((2, 2), "bow"),
+            ((3, 0), "stones:5"),
+            ((3, 1), "stones:10"),
+            ((3, 2), "stones:17"),
+        ]
+    );
+
+    (items, inventories)
+}
+
 fn main() {
+
+
     App::new()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .init_state::<GameState>()
@@ -94,6 +151,15 @@ fn main() {
                 .load_collection::<GameAssets>()
                 .continue_to_state(GameState::Next)
         )
+        .insert_resource(PkvStore::new("siminv", "example.01"))
+        .init_persistent_resource_with(move || {
+            println!("setting default items");
+            default_resources().0
+        })
+        .init_persistent_resource_with(move || {
+            println!("setting default inventory");
+            default_resources().1
+        })
 
         .add_plugins(SiminvPlugin)
         .add_plugins(SiminvSimpleRendererPlugin::<GameAssets, FantasyStyle>::default())
@@ -128,7 +194,6 @@ struct Stash;
 
 fn setup(
     mut commands: Commands,
-    mut items: ResMut<Items>,
     mut inventories: ResMut<Inventories>,
 ) {
 
@@ -143,36 +208,8 @@ fn setup(
         Camera2d,
         Projection::Orthographic(projection)
     ));
-    
-    const ITEMS_RON: &str = include_str!("../assets/data/item_types.ron");
-    let item_types: Vec<ItemType> = ron::from_str(ITEMS_RON).expect("Failed to parse item_types.ron");
 
-    for item_type in item_types {
-        println!("item type: {:?}", item_type);
-        items.register_item_type(item_type);
-    }
-
-    let shield = items.add_item("shield");
-    let helmet = items.add_item("helmet");
-    let armor = items.add_item("armor");
-    let sword_a = items.add_item("sword");
-    let sword_b = items.add_item("sword");
-    let bow = items.add_item("bow");
-    let stones_a = items.add_items("stones", 5);
-    let stones_b = items.add_items("stones", 10);
-    let stones_c = items.add_items("stones", 17);
-
-    let data = inventories.entry_mut("main");
-    data.set(Index::new(0, 0), shield);
-    data.set(Index::new(0, 1), helmet);
-    data.set(Index::new(0, 2), armor);
-    data.set(Index::new(0, 3), sword_a);
-    data.set(Index::new(1, 2), sword_b);
-    data.set(Index::new(2, 2), bow);
-    data.set(Index::new(3, 0), stones_a);
-    data.set(Index::new(3, 1), stones_b);
-    data.set(Index::new(3, 2), stones_c);
-
+    let data = inventories.entry_mut("backpack");
     
     commands.spawn((
         Node {
@@ -195,7 +232,7 @@ fn setup(
             ..default()
         },
         children![
-            build_grid_inventory::<(FantasyStyle, Backpack)>(data, &GridInventoryConfig {
+            build_grid_inventory::<(FantasyStyle, Backpack)>("backpack", data, &GridInventoryConfig {
                 slot_width: px(80),
                 slot_height: px(80),
                 columns: 5, 
@@ -227,7 +264,7 @@ fn setup(
             ..default()
         },
         children![
-            build_grid_inventory::<(FantasyStyle, Equipment)>(data, &GridInventoryConfig {
+            build_grid_inventory::<(FantasyStyle, Equipment)>("eq", data, &GridInventoryConfig {
                 slot_width: px(80),
                 slot_height: px(80),
                 columns: 3, 
@@ -265,13 +302,12 @@ fn setup(
             justify_self: JustifySelf::End,
             align_items: AlignItems::Center,
             justify_content: JustifyContent::Center,
-            //padding: UiRect::left(percent(35)),
             width: percent(35),
             height: percent(100),
             ..default()
         },
         children![
-            build_grid_inventory::<(FantasyStyle, Stash)>(data, &GridInventoryConfig {
+            build_grid_inventory::<(FantasyStyle, Stash)>("stash", data, &GridInventoryConfig {
                 slot_width: px(80),
                 slot_height: px(80),
                 columns: 5, 

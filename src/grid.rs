@@ -1,5 +1,5 @@
 use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
-use crate::{inventory::{Index, InventoryData}, item::Tag, slot::Slot, slot_background::SlotBackground};
+use crate::{inventory::{Index, InventoryData}, item::Tag, slot::{InventoryHandle, Slot}, slot_background::SlotBackground};
 
 pub struct GridInventoryLayout {
     pub columns: usize,
@@ -40,6 +40,7 @@ impl Default for GridInventoryConfig {
 }
 
 pub fn build_grid_inventory<T: Bundle + Default>(
+    handle: &str,
     data: &InventoryData,
     config: &GridInventoryConfig,
 ) -> impl Bundle {
@@ -73,7 +74,7 @@ pub fn build_grid_inventory<T: Bundle + Default>(
                         item: data.get(&index).copied(),
                         required_tag: config.required_tags.get(&index).cloned(),
                     };
-                    build_slot_with_background::<T>(size, slot, index)
+                    build_slot_with_background::<T>(size, slot, index, InventoryHandle(handle.to_string()))
                 })
                 .collect::<Vec<_>>()
                 .into_iter()
@@ -82,7 +83,7 @@ pub fn build_grid_inventory<T: Bundle + Default>(
 }
 
 
-pub fn build_slot_with_background<T: Bundle + Default>(size: Val2, slot: Slot, index: Index) -> impl Bundle {
+pub fn build_slot_with_background<T: Bundle + Default>(size: Val2, slot: Slot, index: Index, handle: InventoryHandle) -> impl Bundle {
     (
         // a wrapper to position a slot in the center of the grid cell
         // we need it so when the user grabs a cell, there is something underneath
@@ -111,6 +112,7 @@ pub fn build_slot_with_background<T: Bundle + Default>(size: Val2, slot: Slot, i
             slot,
             T::default(),
             index,
+            handle,
         )
         ],
     )

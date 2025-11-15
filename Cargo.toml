@@ -6,5 +6,6 @@ edition = "2024"
 [dependencies]
 bevy = "0.17.2"
 bevy_asset_loader = { version = "0.24.0-rc.1", features = ["2d"] }
+bevy_pkv = "0.14"
 serde = "1.0.228"
 thiserror = "2"

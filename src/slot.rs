@@ -11,6 +11,9 @@ pub struct Slot {
 #[derive(Component)]
 pub struct SlotHandle(pub Entity);
 
+#[derive(Component)]
+pub struct InventoryHandle(pub String);
+
 impl Slot {
     pub fn empty() -> Self {
         Slot::default()
@@ -60,6 +63,7 @@ pub(crate) fn on_add(
         ));
 
     commands.trigger_slot_event(SlotEvent::new(added.entity, SlotAdd));
+    commands.trigger_slot_event(SlotEvent::new(added.entity, SlotUpdate));
 
     let Ok(parent) = query.get(added.entity).map(|x| x.parent()) else { return };
 
@@ -160,6 +164,8 @@ pub(crate) fn on_pointer_drag_drop(
 
                 // unselect the previous item to prevent blink before pointer out triggers
                 commands.trigger_slot_event(SlotEvent::new(on_drag_drop.dropped, SlotOut));
+                commands.trigger_slot_event(SlotEvent::new(on_drag_drop.dropped, SlotUpdate));
+                commands.trigger_slot_event(SlotEvent::new(on_drag_drop.event_target(), SlotUpdate));
             }
             // move slot item onto empty space
             (Some(from_id), None) => {
@@ -172,6 +178,8 @@ pub(crate) fn on_pointer_drag_drop(
 
                 // unselect the previous item to prevent blink before pointer out triggers
                 commands.trigger_slot_event(SlotEvent::new(on_drag_drop.dropped, SlotOut));
+                commands.trigger_slot_event(SlotEvent::new(on_drag_drop.dropped, SlotUpdate));
+                commands.trigger_slot_event(SlotEvent::new(on_drag_drop.event_target(), SlotUpdate));
             }
             // nothing if the grabbed slot does not contain an item
             _ => {
@@ -180,18 +188,5 @@ pub(crate) fn on_pointer_drag_drop(
 
         // TODO: update inventory here
     }
-}
-
-pub(crate) fn update_slot(
-    mut commands: Commands,
-    query: Query<(Entity, &Slot), Changed<Slot>>
-) {
-    // should we move it to drag drop?
-    for (entity, slot) in query {
-        commands.trigger_slot_event(SlotEvent::new(entity, SlotUpdate {
-            item: slot.item,
-            required_tag: slot.required_tag.clone(),
-        }));
-    };
 }
 

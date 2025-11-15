@@ -1,8 +1,8 @@
 use std::marker::PhantomData;
 use bevy::{platform::collections::HashMap, prelude::*};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq, Hash, Clone, Copy, Eq)]
+#[derive(Debug, PartialEq, Hash, Clone, Copy, Eq, Serialize, Deserialize)]
 pub struct ItemTypeId(u64);
 
 impl From<u64> for ItemTypeId {
@@ -12,10 +12,10 @@ impl From<u64> for ItemTypeId {
     }
 }
 
-#[derive(Debug, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 pub struct Tag(pub String);
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ItemType {
     /// Unique type_name that can be used to identify this item type.
     pub type_name: String,
@@ -27,7 +27,7 @@ pub struct ItemType {
     pub tags: Vec<Tag>,
 }
 
-#[derive(Debug, PartialEq, Hash, Clone, Copy, Eq)]
+#[derive(Debug, PartialEq, Hash, Clone, Copy, Eq, Deserialize, Serialize)]
 pub struct ItemId(u64);
 
 impl From<u64> for ItemId {
@@ -36,7 +36,7 @@ impl From<u64> for ItemId {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Item {
     /// Unique type_name that can be used to identify this item type.
     pub type_name: String,
@@ -53,6 +53,7 @@ pub struct ItemMeta<'a> {
 }
 
 /// Generates item ids used in runtime.
+#[derive(Deserialize, Serialize)]
 struct IdFactory<I> {
     current_id: u64,
     id_type: PhantomData<I>,
@@ -75,7 +76,7 @@ impl<I: From<u64>> IdFactory<I> {
     }
 }
 
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Serialize, Deserialize)]
 pub struct Items {
     item_type_ids: IdFactory<ItemTypeId>,
     item_ids: IdFactory<ItemId>,
@@ -90,6 +91,12 @@ impl Items {
         self.item_types_by_type_name.insert(item_type.type_name.clone(), id);
         self.item_types.insert(id, item_type);
         id
+    }
+
+    pub fn register_item_types(&mut self, item_types: impl IntoIterator<Item = ItemType>) {
+        item_types.into_iter().for_each(|t| {
+            self.register_item_type(t);
+        })
     }
 
     pub fn add_item(&mut self, type_name: &str) -> ItemId {
