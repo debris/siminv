@@ -2,10 +2,18 @@ use bevy::prelude::*;
 
 use crate::{event::SlotEvent, inventory::Index, item::Items, slot::Slot};
 
+pub struct MovePolicy;
+
+impl MovePolicy {
+    pub const ONLY_EMPTY: u8 = 0u8;
+    pub const EMPTY_OR_REPLACE: u8 = 1u8;
+}
+
 // SlotEvent can be double-click, cmd-click, ctrl-click, shift-click etc.
 /// This observer function is used to move Items from collection F, to collection T, when
 /// event E is triggered.
-pub fn auto_move<E: Send + Sync + 'static, F: Component, T: Component, const R: bool> (
+// on_event_move_from_to
+pub fn on_event_move_to<E: Send + Sync + 'static, F: Component, T: Component, const R: u8> (
     event: On<SlotEvent<E>, F>,
     mut query_from: Query<&mut Slot, Without<T>>,
     query_into: Query<(&mut Slot, Option<&Index>), With<T>>,
@@ -51,9 +59,8 @@ pub fn auto_move<E: Send + Sync + 'static, F: Component, T: Component, const R: 
             core::mem::swap(&mut from_slot.item, &mut into_slot.item);
         },
         None => {
-            let replace_if_no_empty_slot = R;
             // if there are no empty slots matching the tag, maybe replace the existing slot?
-            if replace_if_no_empty_slot {
+            if R == MovePolicy::EMPTY_OR_REPLACE {
                 let Some(into_slot) = ordered_into_slots
                     .iter_mut()
                     .find(|slot| slot.matching_tag(from_item.tags))

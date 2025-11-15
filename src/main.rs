@@ -1,4 +1,4 @@
-use auto_move::auto_move;
+use auto_move::{MovePolicy, on_event_move_to};
 use bevy::{asset::ron, image::TRANSPARENT_IMAGE_HANDLE, prelude::*};
 use double_click::DoubleClick;
 use plugin::ArmouryPlugin;
@@ -86,17 +86,17 @@ fn main() {
         .add_observer(on_slot_add)
         .add_observer(on_slot_update)
 
-        // backpack - eq
-        .add_observer(auto_move::<SlotDoubleClick, Backpack, Equipment, true>)
-        .add_observer(auto_move::<SlotDoubleClick, Equipment, Backpack, false>)
-        
-        // backpack stash
-        .add_observer(auto_move::<SlotShiftClick, Backpack, Stash, false>)
-        .add_observer(auto_move::<SlotShiftClick, Stash, Backpack, false>)
+        // backpack
+        .add_observer(on_event_move_to::<SlotDoubleClick, Backpack, Equipment, { MovePolicy::EMPTY_OR_REPLACE }>)
+        .add_observer(on_event_move_to::<SlotShiftClick, Backpack, Stash, { MovePolicy::ONLY_EMPTY }>)
 
-        // stash eq
-        .add_observer(auto_move::<SlotDoubleClick, Stash, Equipment, true>)
-        .add_observer(auto_move::<SlotShiftClick, Equipment, Stash, false>)
+        // equipment
+        .add_observer(on_event_move_to::<SlotDoubleClick, Equipment, Backpack, { MovePolicy::ONLY_EMPTY }>)
+        .add_observer(on_event_move_to::<SlotShiftClick, Equipment, Stash, { MovePolicy::ONLY_EMPTY }>)
+        
+        // stash
+        .add_observer(on_event_move_to::<SlotDoubleClick, Stash, Equipment, { MovePolicy::EMPTY_OR_REPLACE }>)
+        .add_observer(on_event_move_to::<SlotShiftClick, Stash, Backpack, { MovePolicy::ONLY_EMPTY }>)
 
         .add_systems(OnEnter(GameState::Next), setup)
         .run();
