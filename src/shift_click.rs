@@ -25,7 +25,7 @@ pub(crate) fn on_click<F: Component>(
     }
 
     // not observed component
-    if !query.get(click.entity).is_ok() {
+    if query.get(click.entity).is_err() {
         return
     }
 

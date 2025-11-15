@@ -2,7 +2,7 @@ use core::time::Duration;
 
 use bevy::prelude::*;
 
-use crate::{event::{SlotDoubleClick, SlotEvent, TriggerSlotEvent}, slot::Slot};
+use crate::event::{SlotDoubleClick, SlotEvent, TriggerSlotEvent};
 
 #[derive(Resource)]
 pub(crate) struct DoubleClick {
@@ -26,7 +26,7 @@ pub(crate) fn on_click<F: Component>(
     query: Query<&F>,
 ) {
     // not observed component
-    if !query.get(click.entity).is_ok() {
+    if query.get(click.entity).is_err() {
         return
     }
 

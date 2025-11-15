@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{event::*, item::{ItemId, Items, Tag}, slot_background::SlotBackground};
+use crate::{event::*, item::{ItemId, Items, Tag}};
 
 #[derive(Component, Default, Debug)]
 pub struct Slot {

@@ -36,8 +36,8 @@ pub struct SiminvSimpleRendererPlugin<T, S> {
 impl<T, S> Default for SiminvSimpleRendererPlugin<T, S> {
     fn default() -> Self {
         Self {
-            _assets_marker: PhantomData::default(),
-            _slots_marker: PhantomData::default(),
+            _assets_marker: PhantomData,
+            _slots_marker: PhantomData,
         }
     }
 }
