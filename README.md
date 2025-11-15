@@ -15,3 +15,4 @@
 - project structure, turning it into workspace, with main library and examples
 - examples
 
+![example #1](assets/readme/screenshot.png)
