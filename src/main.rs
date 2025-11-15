@@ -11,6 +11,7 @@ use bevy_asset_loader::prelude::*;
 
 mod auto_move;
 mod double_click;
+mod shift_click;
 mod inventory;
 mod slot;
 mod slot_background;
@@ -85,8 +86,17 @@ fn main() {
         .add_observer(on_slot_add)
         .add_observer(on_slot_update)
 
-        .add_observer(auto_move::<SlotDoubleClick, Backpack, Equipment>)
-        .add_observer(auto_move::<SlotDoubleClick, Equipment, Backpack>)
+        // backpack - eq
+        .add_observer(auto_move::<SlotDoubleClick, Backpack, Equipment, true>)
+        .add_observer(auto_move::<SlotDoubleClick, Equipment, Backpack, false>)
+        
+        // backpack stash
+        .add_observer(auto_move::<SlotShiftClick, Backpack, Stash, false>)
+        .add_observer(auto_move::<SlotShiftClick, Stash, Backpack, false>)
+
+        // stash eq
+        .add_observer(auto_move::<SlotDoubleClick, Stash, Equipment, true>)
+        .add_observer(auto_move::<SlotShiftClick, Equipment, Stash, false>)
 
         .add_systems(OnEnter(GameState::Next), setup)
         .run();
@@ -97,6 +107,9 @@ struct Equipment;
 
 #[derive(Component, Default)]
 struct Backpack;
+
+#[derive(Component, Default)]
+struct Stash;
 
 fn setup(
     mut commands: Commands,
@@ -224,6 +237,34 @@ fn setup(
                     Index::new(1, 2),
                     Index::new(2, 3),
                 ].into_iter().collect(),
+                ..default()
+            })
+        ]
+    ));
+
+    let data = inventories.entry_mut("stash");
+
+    commands.spawn((
+        Node {
+            align_self: AlignSelf::End,
+            justify_self: JustifySelf::End,
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
+            //padding: UiRect::left(percent(35)),
+            width: percent(35),
+            height: percent(100),
+            ..default()
+        },
+        children![
+            build_grid_inventory::<Stash>(data, &GridInventoryConfig {
+                slot_width: px(80),
+                slot_height: px(80),
+                columns: 5, 
+                rows: 8,
+                row_gap: px(0),
+                column_gap: px(0),
+                width: px(80 * 5),
+                height: px(80 * 8),
                 ..default()
             })
         ]

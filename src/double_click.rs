@@ -1,4 +1,4 @@
-use std::time::Duration;
+use core::time::Duration;
 
 use bevy::prelude::*;
 
@@ -19,13 +19,13 @@ impl Default for DoubleClick {
     }
 }
 
-pub(crate) fn on_click(
+pub(crate) fn on_click<F: Component>(
     click: On<Pointer<Click>>,
     mut commands: Commands,
     mut double_click: ResMut<DoubleClick>,
-    query: Query<&Slot>,
+    query: Query<&F>,
 ) {
-    // not slot
+    // not observed component
     if !query.get(click.entity).is_ok() {
         return
     }
@@ -35,7 +35,6 @@ pub(crate) fn on_click(
             double_click.timer = Some(Timer::new(double_click.duration, TimerMode::Once));
         },
         Some(_) => {
-            println!("here on_click");
             double_click.timer = None;
             // the click may be on different entities, but since it is supposed to
             // be fast, we don't care

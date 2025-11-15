@@ -63,6 +63,7 @@ pub(crate) fn on_add(
 
     let Ok(parent) = query.get(added.entity).map(|x| x.parent()) else { return };
 
+    // TODO:
     // it should insert the handle into the background
     // not sure if that's the best solution, but lets keep it for now
     commands.entity(parent)

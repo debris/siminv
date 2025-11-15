@@ -1,6 +1,13 @@
 use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
 use crate::{inventory::{Index, InventoryData}, item::Tag, slot::Slot, slot_background::SlotBackground};
 
+pub struct GridInventoryLayout {
+    pub columns: usize,
+    pub rows: usize,
+    pub required_tags: HashMap<Index, Tag>,
+    pub blocked_indexes: HashSet<Index>,
+}
+
 pub struct GridInventoryConfig {
     pub columns: usize,
     pub rows: usize,
@@ -103,6 +110,7 @@ pub fn build_slot_with_background<T: Component + Default>(size: Val2, slot: Slot
             },
             slot,
             T::default(),
+            index,
         )
         ],
     )
