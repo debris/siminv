@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{event::*, item::{ItemId, Items, Tag}};
+use crate::{event::*, inventory::{self, Inventories}, item::{ItemId, Items, Tag}};
 
 #[derive(Component, Default, Debug)]
 pub struct Slot {
@@ -12,7 +12,10 @@ pub struct Slot {
 pub struct SlotHandle(pub Entity);
 
 #[derive(Component)]
-pub struct InventoryHandle(pub String);
+pub struct InventoryHandle {
+    pub collection: String,
+    pub index: UVec2,
+}
 
 impl Slot {
     pub fn empty() -> Self {
@@ -51,7 +54,8 @@ pub struct Dragged(pub Option<ItemId>);
 pub(crate) fn on_add(
     added: On<Add, Slot>,
     mut commands: Commands,
-    query: Query<&ChildOf>
+    mut query: Query<(&mut Slot, &ChildOf, Option<&InventoryHandle>)>,
+    inventories: Res<Inventories>,
 ) {
     commands.entity(added.entity)
         .try_insert((
@@ -62,16 +66,21 @@ pub(crate) fn on_add(
             GlobalZIndex(0i32),
         ));
 
-    commands.trigger_slot_event(SlotEvent::new(added.entity, SlotAdd));
-    commands.trigger_slot_event(SlotEvent::new(added.entity, SlotUpdate));
-
-    let Ok(parent) = query.get(added.entity).map(|x| x.parent()) else { return };
+    let Ok((mut slot, child_of, linked_inventory)) = query.get_mut(added.entity) else { return };
 
     // TODO:
     // it should insert the handle into the background
     // not sure if that's the best solution, but lets keep it for now
-    commands.entity(parent)
+    commands.entity(child_of.parent())
         .try_insert(SlotHandle(added.entity));
+
+    if let Some(inventory_handle) = linked_inventory {
+        let Some(collection) = inventories.data(&inventory_handle.collection) else { return };
+            slot.item = collection.get(&inventory_handle.index).cloned();
+    }
+    
+    commands.trigger_slot_event(SlotEvent::new(added.entity, SlotAdd));
+    commands.trigger_slot_event(SlotEvent::new(added.entity, SlotUpdate));
 }
 
 pub(crate) fn on_pointer_over(
@@ -185,8 +194,6 @@ pub(crate) fn on_pointer_drag_drop(
             _ => {
             }
         }
-
-        // TODO: update inventory here
     }
 }
 

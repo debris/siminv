@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{event::{SlotEvent, SlotUpdate, TriggerSlotEvent}, inventory::Index, item::Items, slot::Slot};
+use crate::{event::{SlotEvent, SlotUpdate, TriggerSlotEvent}, item::Items, slot::{InventoryHandle, Slot}};
 
 pub struct MovePolicy;
 
@@ -17,7 +17,7 @@ pub fn on_event_move_to<E: Send + Sync + 'static, F: Component, T: Component, co
     event: On<SlotEvent<E>, F>,
     mut commands: Commands,
     mut query_from: Query<&mut Slot, Without<T>>,
-    query_into: Query<(Entity, &mut Slot, Option<&Index>), With<T>>,
+    query_into: Query<(Entity, &mut Slot, Option<&InventoryHandle>), With<T>>,
     items: Res<Items>,
 ) {
     // slot that triggered the event
@@ -34,10 +34,10 @@ pub fn on_event_move_to<E: Send + Sync + 'static, F: Component, T: Component, co
     let mut ordered_into_slots = query_into
         .into_iter()
         // sort the slots, so we start filling rows, one after another
-        .sort_by::<(Entity, &Slot, Option<&Index>)>(|(_, _, index_a), (_, _, index_b)| {
+        .sort_by::<(Entity, &Slot, Option<&InventoryHandle>)>(|(_, _, handle_a), (_, _, handle_b)| {
             // fill items outside of the grid first
-            let Some(a) = index_a else { return core::cmp::Ordering::Less };
-            let Some(b) = index_b else { return core::cmp::Ordering::Greater };
+            let Some(a) = handle_a.map(|x| x.index) else { return core::cmp::Ordering::Less };
+            let Some(b) = handle_b.map(|x| x.index) else { return core::cmp::Ordering::Greater };
 
             if a.y == b.y {
                 a.x.cmp(&b.x)

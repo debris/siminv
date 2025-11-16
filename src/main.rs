@@ -4,9 +4,9 @@ use bevy_pkv::{PersistentResourceAppExtensions, PkvStore};
 use plugin::SiminvPlugin;
 use simple_renderer::{SiminvSimpleRendererPlugin, SimpleImageHandle, SimpleRendererAssets};
 use event::*;
-use inventory::{Inventories, Index};
+use inventory::Inventories;
 use item::{ItemType, Items, Tag};
-use grid::{GridInventoryConfig, build_grid_inventory};
+use grid::{GridInventoryConfig, GridStyle, build_grid_inventory};
 use bevy_asset_loader::prelude::*;
 
 mod auto_move;
@@ -141,8 +141,6 @@ fn default_resources() -> (Items, Inventories) {
 }
 
 fn main() {
-
-
     App::new()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .init_state::<GameState>()
@@ -151,7 +149,7 @@ fn main() {
                 .load_collection::<GameAssets>()
                 .continue_to_state(GameState::Next)
         )
-        .insert_resource(PkvStore::new("siminv", "example.01"))
+        .insert_resource(PkvStore::new("siminv", "example.02"))
         .init_persistent_resource_with(move || {
             println!("setting default items");
             default_resources().0
@@ -194,7 +192,6 @@ struct Stash;
 
 fn setup(
     mut commands: Commands,
-    mut inventories: ResMut<Inventories>,
 ) {
 
     let projection = OrthographicProjection {
@@ -209,8 +206,6 @@ fn setup(
         Projection::Orthographic(projection)
     ));
 
-    let data = inventories.entry_mut("backpack");
-    
     commands.spawn((
         Node {
             width: percent(100),
@@ -220,6 +215,12 @@ fn setup(
         BackgroundColor(palette::ColorPair::METAL.light),
         GlobalZIndex(-1),
     ));
+
+    let grid_style = GridStyle {
+        slot_width: px(80),
+        slot_height: px(80),
+        ..default()
+    };
 
     commands.spawn((
         Node {
@@ -232,21 +233,14 @@ fn setup(
             ..default()
         },
         children![
-            build_grid_inventory::<(FantasyStyle, Backpack)>("backpack", data, &GridInventoryConfig {
-                slot_width: px(80),
-                slot_height: px(80),
+            build_grid_inventory::<(FantasyStyle, Backpack)>(&grid_style, &GridInventoryConfig {
+                collection: "backpack",
                 columns: 5, 
                 rows: 4,
-                row_gap: px(0),
-                column_gap: px(0),
-                width: px(80 * 5),
-                height: px(80 * 4),
                 ..default()
             })
         ]
     ));
-
-    let data = inventories.entry_mut("eq");
 
     // |        | helmet |  neckles |
     // | weapon |armor   | off-hand |
@@ -264,37 +258,30 @@ fn setup(
             ..default()
         },
         children![
-            build_grid_inventory::<(FantasyStyle, Equipment)>("eq", data, &GridInventoryConfig {
-                slot_width: px(80),
-                slot_height: px(80),
+            build_grid_inventory::<(FantasyStyle, Equipment)>(&grid_style, &GridInventoryConfig {
+                collection: "equipment",
                 columns: 3, 
                 rows: 4,
-                row_gap: px(0),
-                column_gap: px(0),
-                width: px(80 * 3),
-                height: px(80 * 4),
                 required_tags: [
-                    (Index::new(1, 0), Tag("helmet".into())),
-                    (Index::new(2, 0), Tag("neckles".into())),
-                    (Index::new(0, 1), Tag("weapon".into())),
-                    (Index::new(1, 1), Tag("armor".into())),
-                    (Index::new(2, 1), Tag("off-hand".into())),
-                    (Index::new(0, 2), Tag("ring".into())),
-                    (Index::new(2, 2), Tag("ring".into())),
-                    (Index::new(0, 3), Tag("gloves".into())),
-                    (Index::new(1, 3), Tag("boots".into())),
+                    (UVec2::new(1, 0), Tag("helmet".into())),
+                    (UVec2::new(2, 0), Tag("neckles".into())),
+                    (UVec2::new(0, 1), Tag("weapon".into())),
+                    (UVec2::new(1, 1), Tag("armor".into())),
+                    (UVec2::new(2, 1), Tag("off-hand".into())),
+                    (UVec2::new(0, 2), Tag("ring".into())),
+                    (UVec2::new(2, 2), Tag("ring".into())),
+                    (UVec2::new(0, 3), Tag("gloves".into())),
+                    (UVec2::new(1, 3), Tag("boots".into())),
                 ].into(),
                 blocked_indexes: vec![
-                    Index::new(0, 0),
-                    Index::new(1, 2),
-                    Index::new(2, 3),
+                    UVec2::new(0, 0),
+                    UVec2::new(1, 2),
+                    UVec2::new(2, 3),
                 ].into_iter().collect(),
                 ..default()
             })
         ]
     ));
-
-    let data = inventories.entry_mut("stash");
 
     commands.spawn((
         Node {
@@ -307,15 +294,10 @@ fn setup(
             ..default()
         },
         children![
-            build_grid_inventory::<(FantasyStyle, Stash)>("stash", data, &GridInventoryConfig {
-                slot_width: px(80),
-                slot_height: px(80),
+            build_grid_inventory::<(FantasyStyle, Stash)>(&grid_style, &GridInventoryConfig {
+                collection: "stash",
                 columns: 5, 
                 rows: 8,
-                row_gap: px(0),
-                column_gap: px(0),
-                width: px(80 * 5),
-                height: px(80 * 8),
                 ..default()
             })
         ]

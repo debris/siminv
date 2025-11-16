@@ -50,7 +50,6 @@ impl<T, S> Plugin for SiminvSimpleRendererPlugin<T, S> where T: SimpleRendererAs
             .add_observer(on_background_out::<T, S>)
             .add_observer(on_slot_add::<S>)
             .add_observer(on_slot_update::<T, S>);
-        // TODO:
     }
 }
 
@@ -135,8 +134,8 @@ fn on_slot_add<S: Component>(
         ImageNode::default(),
         Node {
             position_type: PositionType::Absolute,
-            width: px(48),
-            height: px(48),
+            width: percent(60),
+            height: percent(60),
             ..default()
         },
         Pickable::IGNORE,
