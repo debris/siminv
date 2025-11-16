@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{event::*, inventory::Inventories, item::{ItemId, Items, Tag}};
+use crate::{event::*, inventory::Inventory, item::{ItemId, Items, Tag}};
 
 #[derive(Component, Default, Debug)]
 pub struct Slot {
@@ -55,7 +55,7 @@ pub(crate) fn on_add(
     added: On<Add, Slot>,
     mut commands: Commands,
     mut query: Query<(&mut Slot, &ChildOf, Option<&InventoryHandle>)>,
-    inventories: Res<Inventories>,
+    inventories: Res<Inventory>,
 ) {
     commands.entity(added.entity)
         .try_insert((

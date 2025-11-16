@@ -7,8 +7,6 @@ pub struct SiminvPlugin;
 impl Plugin for SiminvPlugin {
     fn build(&self, app: &mut App) {
         app
-            //.init_resource::<Items>()
-            //.init_resource::<Inventories>()
             .init_resource::<slot::Dragged>()
             .init_resource::<double_click::DoubleClick>()
             .init_resource::<shift_click::ShiftClick>()

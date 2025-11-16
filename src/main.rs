@@ -4,7 +4,7 @@ use bevy_pkv::{PersistentResourceAppExtensions, PkvStore};
 use plugin::SiminvPlugin;
 use simple_renderer::{SiminvSimpleRendererPlugin, SimpleImageHandle, SimpleRendererAssets};
 use event::*;
-use inventory::Inventories;
+use inventory::Inventory;
 use item::{ItemType, Items, Tag};
 use grid::{GridInventoryConfig, GridStyle, build_grid_inventory};
 use bevy_asset_loader::prelude::*;
@@ -87,7 +87,7 @@ impl SimpleRendererAssets for GameAssets {
 
 fn add_to_inventory(
     items: &mut Items,
-    inventories: &mut Inventories,
+    inventories: &mut Inventory,
     name: &str, 
     data: impl IntoIterator<Item = ((u32, u32), &'static str)> 
 ) {
@@ -108,16 +108,16 @@ fn add_to_inventory(
 
 // load defaults here, cause they depend on each other
 // TODO: make make them not depend on each other
-fn default_resources() -> (Items, Inventories) {
+fn default_resources() -> (Items, Inventory) {
     const ITEMS_RON: &str = include_str!("../assets/data/item_types.ron");
     let item_types: Vec<ItemType> = ron::from_str(ITEMS_RON).expect("Failed to parse item_types.ron");
     let mut items = Items::default();
     items.register_item_types(item_types);
 
-    let mut inventories = Inventories::default();
+    let mut inventories = Inventory::default();
 
     let _ = inventories.entry_mut("backpack");
-    let _ = inventories.entry_mut("eq");
+    let _ = inventories.entry_mut("equipment");
     let _ = inventories.entry_mut("stash");
     // TODO: initialize with it?
     add_to_inventory(
@@ -149,7 +149,7 @@ fn main() {
                 .load_collection::<GameAssets>()
                 .continue_to_state(GameState::Next)
         )
-        .insert_resource(PkvStore::new("siminv", "example.02"))
+        .insert_resource(PkvStore::new("siminv", "example.04"))
         .init_persistent_resource_with(move || {
             println!("setting default items");
             default_resources().0

@@ -4,27 +4,27 @@ use serde::{Deserialize, Serialize};
 use crate::{event::{SlotEvent, SlotUpdate}, item::ItemId, slot::{InventoryHandle, Slot}};
 
 #[derive(Resource, Default, Deserialize, Serialize)]
-pub struct Inventories {
-    inventories_by_name: HashMap<String, InventoryData>,
+pub struct Inventory {
+    inventories_by_name: HashMap<String, InventoryCollection>,
 }
 
-impl Inventories {
-    pub fn data(&self, name: &str) -> Option<&InventoryData> {
+impl Inventory {
+    pub fn data(&self, name: &str) -> Option<&InventoryCollection> {
         self.inventories_by_name.get(name)
     }
 
-    pub fn entry_mut(&mut self, name: &str) -> &mut InventoryData {
+    pub fn entry_mut(&mut self, name: &str) -> &mut InventoryCollection {
         self.inventories_by_name.entry(name.to_owned()).or_default()
     }
 }
 
 #[derive(Default, Deserialize, Serialize)]
-pub struct InventoryData {
+pub struct InventoryCollection {
     by_index: HashMap<UVec2, ItemId>,
     max_size: UVec2,
 }
 
-impl InventoryData {
+impl InventoryCollection {
     pub fn set(&mut self, index: UVec2, item: ItemId) {
         self.by_index.insert(index, item);
     }
@@ -60,7 +60,7 @@ impl InventoryData {
 pub(crate) fn on_slot_update(
     update: On<SlotEvent<SlotUpdate>>,
     query: Query<(&Slot, &InventoryHandle)>,
-    mut inventories: ResMut<Inventories>,
+    mut inventories: ResMut<Inventory>,
 ) {
     let Ok((slot, inventory_handle)) = query.get(update.entity) else { return };
     let data = inventories.entry_mut(&inventory_handle.collection);
@@ -85,7 +85,7 @@ mod test {
         let sword = items.add_item("sword");
 
 
-        let mut inventory = Inventories::default();
+        let mut inventory = Inventory::default();
         inventory.entry_mut("main").set(UVec2::new(0, 1), sword);
     }
 }
