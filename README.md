@@ -5,13 +5,16 @@
 - drag and dropping items
 - item tags, and slots with required item tags
 - moving items between different inventories 
-- double-click and shift-click items
+- customizable double-click and shift-click interactions
 - customizable rendering
+- configurable persistant storage
+- preconfigured renderer for simple inventories
 
 
 ##### TODO:
-- loading, saving items
-- preconfigured renderers
+- inventory tabs
+- (or) inventory scrolling
+- tooltips
 - project structure, turning it into workspace, with main library and examples
 - examples
 

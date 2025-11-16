@@ -22,6 +22,7 @@ mod event;
 mod simple_renderer;
 
 const BACKGROUND_COLOR: Color = Color::srgb(0.533, 0.584, 0.624);
+const RESOLUTION: UVec2 = UVec2::new(1280, 720);
 
 #[derive(Clone, Eq, PartialEq, Debug, Hash, Default, States)]
 enum GameState {
@@ -142,7 +143,17 @@ fn default_resources() -> (Items, Inventory) {
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
+        .add_plugins(DefaultPlugins
+            .set(ImagePlugin::default_nearest())
+            .set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "Siminv: Fantasy Inventory Example".into(),
+                    resolution: RESOLUTION.into(),
+                    ..default()
+                }),
+                ..default()
+            })
+        )
         .init_state::<GameState>()
         .add_loading_state(
             LoadingState::new(GameState::AssetLoading)
@@ -159,6 +170,7 @@ fn main() {
             default_resources().1
         })
 
+        .insert_resource(UiScale(1.0))
         .add_plugins(SiminvPlugin)
         .add_plugins(SiminvSimpleRendererPlugin::<GameAssets, FantasyStyle>::default())
         
@@ -175,6 +187,7 @@ fn main() {
         .add_observer(on_event_move_to::<SlotShiftClick, Stash, Backpack, { MovePolicy::ONLY_EMPTY }>)
 
         .add_systems(OnEnter(GameState::Next), setup)
+		.add_systems(Update, update_ui_scale)
         .run();
 }
 
@@ -194,12 +207,22 @@ struct Backpack;
 #[derive(Component, Default)]
 struct Stash;
 
+fn update_ui_scale(
+    window: Single<&Window>,
+    mut ui_scale: ResMut<UiScale>,
+) {
+    let scale = (window.width() / RESOLUTION.x as f32).min(window.height() / RESOLUTION.y as f32);
+    if scale != ui_scale.0 {
+        ui_scale.0 = scale;
+    }
+}
+
 fn setup(
     mut commands: Commands,
 ) {
 
     let projection = OrthographicProjection {
-        scaling_mode: bevy::camera::ScalingMode::AutoMin { min_width: 800., min_height: 600. },
+        scaling_mode: bevy::camera::ScalingMode::AutoMin { min_width: RESOLUTION.x as f32, min_height: RESOLUTION.y as f32 },
         ..OrthographicProjection::default_2d()
     };
 
