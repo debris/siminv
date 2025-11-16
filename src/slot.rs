@@ -127,11 +127,17 @@ pub(crate) fn on_pointer_drag_start(
 pub(crate) fn on_pointer_drag(
     on_drag: On<Pointer<Drag>>,
     mut query: Query<(&Slot, &mut UiTransform), With<Slot>>,
+    ui_scale: Option<Res<UiScale>>,
 ) {
     if let Ok((slot, mut transform)) = query.get_mut(on_drag.event_target()) {
         // we can only drag items that have something inside
         if slot.item.is_some() {
-            transform.translation = Val2::px(on_drag.distance.x, on_drag.distance.y);
+            // adjust translation to the current screen scale
+            let scale = match ui_scale {
+                Some(scale) => scale.0,
+                None => 1.,
+            };
+            transform.translation = Val2::px(on_drag.distance.x / scale, on_drag.distance.y / scale);
         }
     }
 }
