@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{double_click, inventory::{self, Inventories}, item::Items, shift_click, slot, slot_background};
+use crate::{double_click, inventory::{self}, shift_click, slot, slot_background};
 
 pub struct SiminvPlugin;
 

@@ -1,6 +1,5 @@
 use bevy::{ecs::event::EntityComponentsTrigger, prelude::*};
 
-use crate::item::{ItemId, Tag};
 
 #[derive(Debug, Clone, EntityEvent)]
 #[entity_event(trigger = EntityComponentsTrigger<'a>)]

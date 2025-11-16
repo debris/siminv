@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{event::*, inventory::{self, Inventories}, item::{ItemId, Items, Tag}};
+use crate::{event::*, inventory::Inventories, item::{ItemId, Items, Tag}};
 
 #[derive(Component, Default, Debug)]
 pub struct Slot {

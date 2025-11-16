@@ -1,5 +1,5 @@
 use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
-use crate::{inventory::InventoryData, item::Tag, slot::{InventoryHandle, Slot}, slot_background::SlotBackground};
+use crate::{item::Tag, slot::{InventoryHandle, Slot}, slot_background::SlotBackground};
 
 pub struct GridStyle {
     pub column_gap: Val,
@@ -74,7 +74,7 @@ pub fn build_grid_inventory<T: Bundle + Default>(
                     slot.required_tag = config.required_tags.get(&index).cloned();
                     build_slot_with_background::<T>(size, slot, index, InventoryHandle {
                         collection: config.collection.to_string(),
-                        index: index,
+                        index,
                     })
                 })
                 .collect::<Vec<_>>()
