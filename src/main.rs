@@ -19,9 +19,9 @@ mod item;
 mod grid;
 mod plugin;
 mod event;
-mod palette;
-mod tint;
 mod simple_renderer;
+
+const BACKGROUND_COLOR: Color = Color::srgb(0.533, 0.584, 0.624);
 
 #[derive(Clone, Eq, PartialEq, Debug, Hash, Default, States)]
 enum GameState {
@@ -178,15 +178,19 @@ fn main() {
         .run();
 }
 
+/// Marker that is used by the renderer plugin.
 #[derive(Component, Default)]
 struct FantasyStyle;
 
+/// Marker for equipment. Used to track click events.
 #[derive(Component, Default)]
 struct Equipment;
 
+/// Marker for backpack. Used to track click events.
 #[derive(Component, Default)]
 struct Backpack;
 
+/// Marker for stash. Used to track click events.
 #[derive(Component, Default)]
 struct Stash;
 
@@ -212,7 +216,7 @@ fn setup(
             height: percent(100),
             ..default()
         },
-        BackgroundColor(palette::ColorPair::METAL.light),
+        BackgroundColor(BACKGROUND_COLOR),
         GlobalZIndex(-1),
     ));
 
