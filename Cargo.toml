@@ -1,6 +1,6 @@
 [package]
-name = "simple_inventory"
-version = "0.1.0"
+name = "siminv"
+version = "0.1.0-rc.1"
 edition = "2024"
 
 [dependencies]
@@ -9,3 +9,7 @@ bevy_asset_loader = { version = "0.24.0-rc.1", features = ["2d"] }
 bevy_pkv = "0.14"
 serde = "1.0.228"
 thiserror = "2"
+
+[[example]]
+name = "fantasy"
+

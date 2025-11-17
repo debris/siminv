@@ -1,25 +1,8 @@
-use auto_move::{MovePolicy, on_event_move_to};
 use bevy::{asset::ron, prelude::*};
 use bevy_pkv::{PersistentResourceAppExtensions, PkvStore};
-use plugin::SiminvPlugin;
-use simple_renderer::{SiminvSimpleRendererPlugin, SimpleImageHandle, SimpleRendererAssets};
-use event::*;
-use inventory::Inventory;
-use item::{ItemType, Items, Tag};
-use grid::{GridInventoryConfig, GridStyle, build_grid_inventory};
+use siminv::prelude::*;
+use siminv::simple_renderer::{SiminvSimpleRendererPlugin, SimpleImageHandle, SimpleRendererAssets};
 use bevy_asset_loader::prelude::*;
-
-mod auto_move;
-mod double_click;
-mod shift_click;
-mod inventory;
-mod slot;
-mod slot_background;
-mod item;
-mod grid;
-mod plugin;
-mod event;
-mod simple_renderer;
 
 const BACKGROUND_COLOR: Color = Color::srgb(0.533, 0.584, 0.624);
 const RESOLUTION: UVec2 = UVec2::new(1280, 720);

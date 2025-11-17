@@ -1,6 +1,7 @@
 use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
 use crate::{item::Tag, slot::{InventoryHandle, Slot}, slot_background::SlotBackground};
 
+/// Defines slot sizes and gaps beetween slots.
 pub struct GridStyle {
     pub column_gap: Val,
     pub row_gap: Val,
@@ -19,6 +20,7 @@ impl Default for GridStyle {
     }
 }
 
+/// Specifies source of the displayed grid and slot requirements.
 pub struct GridInventoryConfig<'a> {
     pub collection: &'a str,
     pub columns: usize,
@@ -40,6 +42,7 @@ impl<'a> Default for GridInventoryConfig<'a> {
     }
 }
 
+/// Helper function to build grid Bundle.
 pub fn build_grid_inventory<T: Bundle + Default>(
     style: &GridStyle,
     config: &GridInventoryConfig,
@@ -84,7 +87,7 @@ pub fn build_grid_inventory<T: Bundle + Default>(
 }
 
 
-pub fn build_slot_with_background<T: Bundle + Default>(size: Val2, slot: Slot, index: UVec2, handle: InventoryHandle) -> impl Bundle {
+fn build_slot_with_background<T: Bundle + Default>(size: Val2, slot: Slot, index: UVec2, handle: InventoryHandle) -> impl Bundle {
     (
         // a wrapper to position a slot in the center of the grid cell
         // we need it so when the user grabs a cell, there is something underneath
