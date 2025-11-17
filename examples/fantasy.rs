@@ -69,27 +69,6 @@ impl SimpleRendererAssets for GameAssets {
     }
 }
 
-fn add_to_inventory(
-    items: &mut Items,
-    inventory: &mut Inventory,
-    name: &str, 
-    data: impl IntoIterator<Item = ((u32, u32), &'static str)> 
-) {
-    for (index, item_query) in data {
-        let item: Vec<_> = item_query.split(":").collect();
-        if item.len() == 1 {
-            let item_name = item[0];
-            let item_id = items.add_item(item_name);
-            inventory.set(name.into(), index.into(), item_id);
-        } else if item.len() == 2 {
-            let item_name = item[0];
-            let count = item[1].parse::<u64>().expect("ok");
-            let item_id = items.add_items(item_name, count);
-            inventory.set(name.into(), index.into(), item_id);
-        }
-    }
-}
-
 // load defaults here, cause they depend on each other
 // TODO: make make them not depend on each other
 fn default_resources() -> (Items, Inventory) {
@@ -98,26 +77,22 @@ fn default_resources() -> (Items, Inventory) {
     let mut items = Items::default();
     items.register_item_types(item_types);
 
-    let mut inventories = Inventory::default();
+    let mut inventory = Inventory::default();
+    inventory.set_max_size("stash".into(), UVec2::new(5, 8));
+    inventory.set_max_size("backpack".into(), UVec2::new(5, 4));
+    inventory.set_max_size("equipment".into(), UVec2::new(3, 4));
 
-    add_to_inventory(
-        &mut items, 
-        &mut inventories, 
-        "backpack",
-        vec![
-            ((0, 0), "shield"),
-            ((0, 1), "helmet"),
-            ((0, 2), "armor"),
-            ((0, 3), "sword"),
-            ((1, 2), "sword"),
-            ((2, 2), "bow"),
-            ((3, 0), "stones:5"),
-            ((3, 1), "stones:10"),
-            ((3, 2), "stones:17"),
-        ]
-    );
+    inventory.add("backpack", items.add_item("shield"));
+    inventory.add("backpack", items.add_item("sword"));
+    inventory.add("backpack", items.add_item("sword"));
+    inventory.add("backpack", items.add_item("helmet"));
+    inventory.add("backpack", items.add_item("bow"));
+    inventory.add("backpack", items.add_item("armor"));
+    inventory.add("backpack", items.add_items("stones", 5));
+    inventory.add("backpack", items.add_items("stones", 10));
+    inventory.add("backpack", items.add_items("stones", 17));
 
-    (items, inventories)
+    (items, inventory)
 }
 
 fn main() {
@@ -139,7 +114,7 @@ fn main() {
                 .load_collection::<GameAssets>()
                 .continue_to_state(GameState::Next)
         )
-        .insert_resource(PkvStore::new("siminv", "example.05"))
+        .insert_resource(PkvStore::new("siminv", "example.06"))
         .init_persistent_resource_with(move || {
             println!("setting default items");
             default_resources().0
@@ -336,7 +311,6 @@ fn on_button_press(
         return
     }
 
-    let item_id = items.add_item("sword");
-    inventory.set("stash".into(), (0, 0).into(), item_id);
+    inventory.add("stash",items.add_item("sword"));
 }
 
