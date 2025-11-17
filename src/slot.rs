@@ -11,7 +11,7 @@ pub struct Slot {
 #[derive(Component)]
 pub struct SlotHandle(pub Entity);
 
-#[derive(Component)]
+#[derive(Component, PartialEq, Hash, Clone, Eq)]
 pub struct InventoryHandle {
     pub collection: String,
     pub index: UVec2,
@@ -54,8 +54,7 @@ pub struct Dragged(pub Option<ItemId>);
 pub(crate) fn on_add(
     added: On<Add, Slot>,
     mut commands: Commands,
-    mut query: Query<(&mut Slot, &ChildOf, Option<&InventoryHandle>)>,
-    inventories: Res<Inventory>,
+    mut query: Query<&ChildOf, With<Slot>>,
 ) {
     commands.entity(added.entity)
         .try_insert((
@@ -66,7 +65,7 @@ pub(crate) fn on_add(
             GlobalZIndex(0i32),
         ));
 
-    let Ok((mut slot, child_of, linked_inventory)) = query.get_mut(added.entity) else { return };
+    let Ok(child_of) = query.get_mut(added.entity) else { return };
 
     // TODO:
     // it should insert the handle into the background
@@ -74,12 +73,8 @@ pub(crate) fn on_add(
     commands.entity(child_of.parent())
         .try_insert(SlotHandle(added.entity));
 
-    if let Some(inventory_handle) = linked_inventory {
-        let Some(collection) = inventories.data(&inventory_handle.collection) else { return };
-            slot.item = collection.get(&inventory_handle.index).cloned();
-    }
-    
     commands.trigger_slot_event(SlotEvent::new(added.entity, SlotAdd));
+    // event propagation is synchronous. after everyone processes SlotAdd, we call SlotUpdate
     commands.trigger_slot_event(SlotEvent::new(added.entity, SlotUpdate));
 }
 

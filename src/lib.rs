@@ -8,6 +8,7 @@ mod item;
 mod grid;
 mod plugin;
 mod event;
+mod slot_updater;
 pub mod simple_renderer;
 
 pub mod prelude {

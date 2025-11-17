@@ -71,7 +71,7 @@ impl SimpleRendererAssets for GameAssets {
 
 fn add_to_inventory(
     items: &mut Items,
-    inventories: &mut Inventory,
+    inventory: &mut Inventory,
     name: &str, 
     data: impl IntoIterator<Item = ((u32, u32), &'static str)> 
 ) {
@@ -80,12 +80,12 @@ fn add_to_inventory(
         if item.len() == 1 {
             let item_name = item[0];
             let item_id = items.add_item(item_name);
-            inventories.entry_mut(name).set(index.into(), item_id);
+            inventory.set(name.into(), index.into(), item_id);
         } else if item.len() == 2 {
             let item_name = item[0];
             let count = item[1].parse::<u64>().expect("ok");
             let item_id = items.add_items(item_name, count);
-            inventories.entry_mut(name).set(index.into(), item_id);
+            inventory.set(name.into(), index.into(), item_id);
         }
     }
 }
@@ -100,10 +100,6 @@ fn default_resources() -> (Items, Inventory) {
 
     let mut inventories = Inventory::default();
 
-    let _ = inventories.entry_mut("backpack");
-    let _ = inventories.entry_mut("equipment");
-    let _ = inventories.entry_mut("stash");
-    // TODO: initialize with it?
     add_to_inventory(
         &mut items, 
         &mut inventories, 
@@ -143,7 +139,7 @@ fn main() {
                 .load_collection::<GameAssets>()
                 .continue_to_state(GameState::Next)
         )
-        .insert_resource(PkvStore::new("siminv", "example.04"))
+        .insert_resource(PkvStore::new("siminv", "example.05"))
         .init_persistent_resource_with(move || {
             println!("setting default items");
             default_resources().0
@@ -171,6 +167,7 @@ fn main() {
 
         .add_systems(OnEnter(GameState::Next), setup)
 		.add_systems(Update, update_ui_scale)
+        .add_observer(on_button_press)
         .run();
 }
 
@@ -312,5 +309,34 @@ fn setup(
             })
         ]
     ));
+
+    commands.spawn((
+        Node {
+            align_self: AlignSelf::Center,
+            justify_self: JustifySelf::Center,
+            width: px(120),
+            height: px(80),
+            ..default()
+        },
+        Text::new("Get Sword"),
+        AddButton,
+    ));
+}
+
+#[derive(Component)]
+struct AddButton;
+
+fn on_button_press(
+    clicked: On<Pointer<Click>>,
+    query: Query<&AddButton>,
+    mut items: ResMut<Items>,
+    mut inventory: ResMut<Inventory>,
+) {
+    if !query.contains(clicked.entity) {
+        return
+    }
+
+    let item_id = items.add_item("sword");
+    inventory.set("stash".into(), (0, 0).into(), item_id);
 }
 

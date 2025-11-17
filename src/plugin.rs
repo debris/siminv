@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{double_click, inventory::{self}, shift_click, slot, slot_background};
+use crate::{double_click, inventory::{self}, shift_click, slot, slot_background, slot_updater};
 
 pub struct SiminvPlugin;
 
@@ -10,6 +10,7 @@ impl Plugin for SiminvPlugin {
             .init_resource::<slot::Dragged>()
             .init_resource::<double_click::DoubleClick>()
             .init_resource::<shift_click::ShiftClick>()
+            .init_resource::<slot_updater::SlotUpdater>()
             .add_observer(slot::on_add)
             .add_observer(slot::on_pointer_over)
             .add_observer(slot::on_pointer_out)
@@ -24,7 +25,9 @@ impl Plugin for SiminvPlugin {
             .add_systems(Update, double_click::update_time)
             .add_observer(shift_click::on_click::<slot::Slot>)
             .add_systems(Update, shift_click::detect_shift_press)
-            .add_observer(inventory::on_slot_update);
+            .add_observer(inventory::on_slot_update)
+            .add_observer(slot_updater::on_slot_add)
+            .add_systems(Update, slot_updater::propagete_inventory_changes);
     }
 }
 
