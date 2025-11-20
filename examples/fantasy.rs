@@ -311,6 +311,6 @@ fn on_button_press(
         return
     }
 
-    inventory.add("stash",items.add_item("sword"));
+    inventory.add("stash", items.add_item("sword"));
 }
 

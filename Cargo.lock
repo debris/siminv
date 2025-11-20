@@ -4175,7 +4175,6 @@ dependencies = [
  "bevy_asset_loader",
  "bevy_pkv",
  "serde",
- "thiserror 2.0.17",
 ]
 
 [[package]]
