@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{event::*, item::{ItemId, Items, Tag}};
+use crate::{event::*, item::{ItemId, Items, Tag}, prelude::SlotBackground};
 
 #[derive(Component, Default, Debug)]
 pub struct Slot {
@@ -55,6 +55,7 @@ pub(crate) fn on_add(
     added: On<Add, Slot>,
     mut commands: Commands,
     mut query: Query<&ChildOf, With<Slot>>,
+    mut query_background: Query<&SlotBackground>,
 ) {
     commands.entity(added.entity)
         .try_insert((
@@ -70,8 +71,10 @@ pub(crate) fn on_add(
     // TODO:
     // it should insert the handle into the background
     // not sure if that's the best solution, but lets keep it for now
-    commands.entity(child_of.parent())
-        .try_insert(SlotHandle(added.entity));
+    if query_background.contains(child_of.parent()) {
+        commands.entity(child_of.parent())
+            .try_insert(SlotHandle(added.entity));
+    }
 
     commands.trigger_slot_event(SlotEvent::new(added.entity, SlotAdd));
     // event propagation is synchronous. after everyone processes SlotAdd, we call SlotUpdate

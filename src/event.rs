@@ -52,6 +52,12 @@ pub struct SlotDoubleClick;
 #[derive(Debug)]
 pub struct SlotShiftClick;
 
+#[derive(Debug)]
+pub struct SlotHover;
+
+#[derive(Debug)]
+pub struct SlotHoverOver;
+
 pub(crate) trait TriggerSlotEvent {
     fn trigger_slot_event<E: Send + Sync + 'static>(&mut self, event: SlotEvent<E>);
 }

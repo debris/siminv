@@ -1,3 +1,4 @@
+use bevy::ecs::query;
 use bevy::{asset::ron, prelude::*};
 use bevy_pkv::{PersistentResourceAppExtensions, PkvStore};
 use siminv::prelude::*;
@@ -5,6 +6,7 @@ use siminv::simple_renderer::{SiminvSimpleRendererPlugin, SimpleImageHandle, Sim
 use bevy_asset_loader::prelude::*;
 
 const BACKGROUND_COLOR: Color = Color::srgb(0.533, 0.584, 0.624);
+const TOOLTIP_BACKGROUND_COLOR: Color = Color::srgb(0.306, 0.290, 0.306);
 const RESOLUTION: UVec2 = UVec2::new(1280, 720);
 
 #[derive(Clone, Eq, PartialEq, Debug, Hash, Default, States)]
@@ -43,7 +45,7 @@ impl GameAssets {
             _ => {
                 // warn here!
                 3
-            }
+       }
         };
 
         TextureAtlas::from(self.icons_atlas.clone())
@@ -72,7 +74,7 @@ impl SimpleRendererAssets for GameAssets {
 // load defaults here, cause they depend on each other
 // TODO: make make them not depend on each other
 fn default_resources() -> (Items, Inventory) {
-    const ITEMS_RON: &str = include_str!("../assets/data/item_types.ron");
+    const ITEMS_RON: &str = include_str!("../assets/data/fantasy.ron");
     let item_types: Vec<ItemType> = ron::from_str(ITEMS_RON).expect("Failed to parse item_types.ron");
     let mut items = Items::default();
     items.register_item_types(item_types);
@@ -143,6 +145,8 @@ fn main() {
         .add_systems(OnEnter(GameState::Next), setup)
 		.add_systems(Update, update_ui_scale)
         .add_observer(on_button_press)
+        .add_observer(on_slot_hover)
+        .add_observer(on_slot_hover_over)
         .run();
 }
 
@@ -312,5 +316,137 @@ fn on_button_press(
     }
 
     inventory.add("stash", items.add_item("sword"));
+}
+
+enum ScreenPart {
+    TopLeft,
+    TopRight,
+    BottomRight,
+    BottomLeft,
+}
+
+impl ScreenPart {
+    fn corner(&self) -> Vec2 {
+        match *self {
+            ScreenPart::TopLeft => Vec2::new(-1., -1.),
+            ScreenPart::TopRight => Vec2::new(1., -1.),
+            ScreenPart::BottomRight => Vec2::new(1., 1.),
+            ScreenPart::BottomLeft => Vec2::new(-1., 1.),
+        }
+    }
+
+    fn opposite(&self) -> Self {
+        match *self {
+            ScreenPart::TopLeft => ScreenPart::BottomRight,
+            ScreenPart::BottomRight => ScreenPart::TopLeft,
+            ScreenPart::TopRight => ScreenPart::BottomLeft,
+            ScreenPart::BottomLeft => ScreenPart::TopRight,
+        }
+    }
+}
+
+fn compute_screen_part(transform: &UiGlobalTransform, window: &Window) -> ScreenPart {
+    let center = transform.transform_point2(Vec2::splat(0.));
+
+    match (center.y <= (window.resolution.physical_height() / 2) as f32, center.x <= (window.resolution.physical_width() / 2) as f32) {
+        (true, true) => ScreenPart::TopLeft,
+        (true, false) => ScreenPart::TopRight,
+        (false, true) => ScreenPart::BottomLeft,
+        (false, false) => ScreenPart::BottomRight,
+    }
+}
+
+fn tooltip_node_position(node: &ComputedNode, transform: &UiGlobalTransform, tooltip_size: &UVec2, window: &Window) -> UiRect {
+    let screen_part = compute_screen_part(transform, window);
+
+    let half_size = node.size() * 0.5;
+    let corner = half_size * screen_part.opposite().corner();
+
+    let corner_screen_coords = transform.transform_point2(corner) * node.inverse_scale_factor();
+
+    match screen_part {
+        ScreenPart::TopLeft => {
+            UiRect { 
+                top: px(corner_screen_coords.y),
+                left: px(corner_screen_coords.x),
+                ..default()
+            }
+        },
+        ScreenPart::BottomLeft => {
+            UiRect {
+                top: px(corner_screen_coords.y - tooltip_size.y as f32),
+                left: px(corner_screen_coords.x),
+                ..default()
+            }
+        },
+        ScreenPart::TopRight => {
+            UiRect {
+                top: px(corner_screen_coords.y),
+                left: px(corner_screen_coords.x - tooltip_size.x as f32),
+                ..default()
+            }
+        },
+        ScreenPart::BottomRight => {
+            UiRect {
+                top: px(corner_screen_coords.y - tooltip_size.y as f32),
+                left: px(corner_screen_coords.x - tooltip_size.x as f32),
+                ..default()
+            }
+        }
+    }
+}
+
+#[derive(Component)]
+struct TooltipMarker;
+
+fn on_slot_hover(
+    hover: On<SlotEvent<SlotHover>>,
+    mut commands: Commands,
+    query: Query<(&SlotHandle, &ComputedNode, &UiGlobalTransform)>,
+    query_slot: Query<&Slot>,
+    window: Single<&Window>,
+    items: Res<Items>,
+) {
+    println!("hover");
+    
+    let Ok((slot_handle, node, transform)) = query.get(hover.entity) else { return };
+    let Ok(slot) = query_slot.get(slot_handle.0) else { return };
+    let Some(item) = slot.item.and_then(|item_id| items.get_item_meta(item_id)) else { return };
+
+    let tooltip_size = UVec2::new(160, 120);
+    let position = tooltip_node_position(node, transform, &tooltip_size, &window);
+
+    commands.spawn((
+        Node {
+            width: px(tooltip_size.x),
+            height: px(tooltip_size.y),
+            top: position.top,
+            left: position.left,
+            border: UiRect::all(px(2)),
+            position_type: PositionType::Absolute, 
+            padding: UiRect::all(px(6)),
+            ..default() 
+        },
+        BackgroundColor(TOOLTIP_BACKGROUND_COLOR),
+        BorderColor::all(Color::BLACK),
+        TooltipMarker,
+        Pickable::IGNORE,
+        GlobalZIndex(1),
+        children![(
+            Text::new(item.display_name),
+        )]
+    ));
+}
+
+fn on_slot_hover_over(
+    over: On<SlotEvent<SlotHoverOver>>,
+    mut commands: Commands,
+    query: Query<Entity, With<TooltipMarker>>,
+) {
+    println!("over");
+    for tooltip in query {
+        // there should be just one :)
+        commands.entity(tooltip).despawn();
+    }
 }
 
