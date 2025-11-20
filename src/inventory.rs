@@ -17,7 +17,7 @@ impl Inventory {
     pub fn get(&self, collection: &str, index: &UVec2) -> Option<&ItemId> {
         self.collections_by_name
             .get(collection)
-            .and_then(|collection| collection.get(&index))
+            .and_then(|collection| collection.get(index))
     }
 
     pub fn set(&mut self, collection: &str, index: UVec2, item: ItemId) {
@@ -38,9 +38,8 @@ impl Inventory {
     }
 
     fn remove_unregistered(&mut self, collection: &str, index: UVec2) {
-        self.collections_by_name
-            .get_mut(&collection.to_string())
-            .map(|collection| collection.remove(&index));
+        if let Some(collection) = self.collections_by_name
+            .get_mut(&collection.to_string()) { collection.remove(&index) }
     }
 
     pub fn set_max_size(&mut self, collection: &str, max_size: UVec2) {
